@@ -1,3 +1,7 @@
+# Konata (`web` branch)
+
+Aiming to run Konata on web browsers, not on Electron.
+
 # Konata
 
 * Konata is an instruction pipeline visualizer for Onikiri2-Kanata/Gem5-O3PipeView formats.

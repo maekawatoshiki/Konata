@@ -28,7 +28,13 @@ class Konata {
             console.log(`Closed: ${this.filePath_}`);
         }
     }
-    openFile(pathOrFile, updateCallback, finishCallback, errorCallback) {
+    openFile(
+        pathOrFile,
+        updateCallback,
+        finishCallback,
+        errorCallback,
+        config = null,
+    ) {
         this.filePath_ =
             typeof pathOrFile === "string"
                 ? pathOrFile
@@ -36,6 +42,7 @@ class Konata {
         this.updateCallback_ = updateCallback;
         this.finishCallback_ = finishCallback;
         this.errorCallback_ = errorCallback;
+        this.config_ = config;
         this.reload(pathOrFile);
     }
     reload(pathOrFile) {
@@ -72,6 +79,7 @@ class Konata {
                     self.errorCallback_(error);
                 }
             },
+            this.config_,
         );
     }
     getOp(id, resolution = 0) {

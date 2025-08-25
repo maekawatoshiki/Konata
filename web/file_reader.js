@@ -29,10 +29,21 @@
             getPath() {
                 return (this.file_ && this.file_.name) || this.file_ || "";
             }
-            readlines(onLine, onFinish) {
+            readlines(onLine, onFinish, config = null) {
                 const self = this;
                 (async function () {
                     try {
+                        // Get yield interval from config, with Chrome detection fallback
+                        let yieldInterval = 4096;
+                        if (config && config.streamYieldInterval) {
+                            yieldInterval = config.streamYieldInterval;
+                        } else {
+                            // Chrome detection fallback
+                            const isChrome =
+                                /Chrome/.test(navigator.userAgent) &&
+                                /Google Inc/.test(navigator.vendor);
+                            yieldInterval = isChrome ? 2048 : 4096;
+                        }
                         let stream;
                         if (self.file_ instanceof File) {
                             stream = self.file_.stream();
@@ -67,8 +78,9 @@
                                 // Chunk lines to callbacks without blocking too much
                                 const lines = text.split(/\r?\n/);
                                 for (let i = 0; i < lines.length; i++) {
-                                    onLine(lines[i]);
-                                    if (i % 8192 === 0)
+                                    await onLine(lines[i]);
+                                    // Use configurable yield interval
+                                    if (i % yieldInterval === 0)
                                         await new Promise((r) =>
                                             setTimeout(r, 0),
                                         );
@@ -83,17 +95,25 @@
                             .getReader();
                         let { value, done } = await reader.read();
                         let carry = "";
+                        let lineCount = 0;
                         while (!done) {
                             self.bytesRead_ += value.length;
                             let chunk = carry + value;
                             let parts = chunk.split(/\r?\n/);
                             carry = parts.pop();
                             for (let line of parts) {
-                                onLine(line);
+                                await onLine(line);
+                                lineCount++;
+                                // Yield control periodically during streaming to prevent UI freezing
+                                if (lineCount % yieldInterval === 0) {
+                                    await new Promise((resolve) =>
+                                        setTimeout(resolve, 0),
+                                    );
+                                }
                             }
                             ({ value, done } = await reader.read());
                         }
-                        if (carry) onLine(carry);
+                        if (carry) await onLine(carry);
                         onFinish();
                     } catch (e) {
                         console.error(e);

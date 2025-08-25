@@ -35,6 +35,8 @@
                 }));
                 this.commandHistory = [];
                 this.maxCommandHistoryNum = 20;
+                this.parsingYieldInterval = 4096; // Lines processed before yielding control
+                this.streamYieldInterval = 4096; // Lines processed before yielding in streaming
                 this.customColorSchemes = {
                     Custom: {
                         enable: 0,
@@ -217,6 +219,14 @@
                     },
                     drawZoomFactor: {
                         comment: "Zoom granularity factor. [Default: 1]",
+                    },
+                    parsingYieldInterval: {
+                        comment:
+                            "Lines processed before yielding control during parsing. Lower = more responsive UI, higher = faster parsing. [Default: 4096]",
+                    },
+                    streamYieldInterval: {
+                        comment:
+                            "Lines processed before yielding control during streaming. Lower = more responsive UI, higher = faster streaming. [Default: 4096]",
                     },
                 };
             }

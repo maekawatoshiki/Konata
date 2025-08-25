@@ -30,11 +30,13 @@ class Gem5O3PipeViewParser {
         this.lastNotFlushedID = -1;
         this.curParsingSeqNum_ = 0;
         this.curParsingInsnFlushed_ = false;
-        this.curParsingInsnCycle_ = -1; /** @type {Object.<string, Op>} */
-        this.parsingOpList_ =
-            {}; /** @type {Object.<string, Gem5O3PipeViewExLogInfo>} */
+        this.curParsingInsnCycle_ = -1;
+        /** @type {Object.<string, Op>} */
+        this.parsingOpList_ = {};
+        /** @type {Object.<string, Gem5O3PipeViewExLogInfo>} */
         this.parsingExLog_ = {};
-        this.parsingExLogLastGID_ = -1; /** @type {Object.<string, Op>} */
+        this.parsingExLogLastGID_ = -1;
+        /** @type {Object.<string, Op>} */
         this.depTable_ = {};
         this.complete_ = false;
         this.laneMap_ = {};
@@ -68,6 +70,8 @@ class Gem5O3PipeViewParser {
         };
         this.STAGE_LABEL_MAP_ = ["F", "Dc", "Rn", "Ds", "Is", "Cm", "Rt", "Mc"];
         this.SERIAL_NUMBER_PATTERN = new RegExp("sn:(\\d+)");
+        this.yieldInterval_ = 4096; // Lines processed before yielding control
+        this.yieldCounter_ = 0;
     }
     close() {
         this.closed_ = true;
@@ -80,16 +84,27 @@ class Gem5O3PipeViewParser {
     get name() {
         return "Gem5O3PipeViewParser";
     }
-    setFile(file, updateCallback, finishCallback, errorCallback) {
+    setFile(
+        file,
+        updateCallback,
+        finishCallback,
+        errorCallback,
+        config = null,
+    ) {
         this.file_ = file;
         this.updateCallback_ = updateCallback;
         this.finishCallback_ = finishCallback;
         this.errorCallback_ = errorCallback;
+        // Use config for yield interval if provided
+        if (config && config.parsingYieldInterval) {
+            this.yieldInterval_ = config.parsingYieldInterval;
+        }
         this.startTime_ = new Date().getTime();
         this.startParsing();
         file.readlines(
             this.parseLine.bind(this),
             this.finishParsing.bind(this),
+            config,
         );
     }
     getOp(id, resolution = 0) {
@@ -117,14 +132,14 @@ class Gem5O3PipeViewParser {
         this.complete_ = false;
         this.curCycle_ = 0;
     }
-    parseLine(line) {
+    async parseLine(line) {
         try {
-            this.parseLineBody_(line);
+            await this.parseLineBody_(line);
         } catch (e) {
             this.errorCallback_(false, e);
         }
     }
-    parseLineBody_(line) {
+    async parseLineBody_(line) {
         if (this.closed_) return;
         let args = line.split(":");
         if (args[0] != "O3PipeView") {
@@ -142,6 +157,13 @@ class Gem5O3PipeViewParser {
                         this.parsingExLog_[sn] = new Gem5O3PipeViewExLogInfo();
                     this.parsingExLog_[sn].logList.push(args);
                 }
+            }
+
+            // Yield control to event loop periodically to prevent UI freezing
+            this.yieldCounter_++;
+            if (this.yieldCounter_ >= this.yieldInterval_) {
+                this.yieldCounter_ = 0;
+                await new Promise((resolve) => setTimeout(resolve, 0));
             }
             return;
         }
@@ -233,6 +255,13 @@ class Gem5O3PipeViewParser {
                 this.updateCount_,
             );
             this.updateCount_++;
+        }
+
+        // Yield control to event loop periodically to prevent UI freezing
+        this.yieldCounter_++;
+        if (this.yieldCounter_ >= this.yieldInterval_) {
+            this.yieldCounter_ = 0;
+            await new Promise((resolve) => setTimeout(resolve, 0));
         }
     }
     finishParsing() {

@@ -22,7 +22,7 @@ class KonataRenderer {
         this.OP_W = 32;
         this.OP_H = 24;
         this.MAX_ZOOM_LEVEL_ = 24;
-        this.MIN_ZOOM_LEVEL_ = -10;
+        this.MIN_ZOOM_LEVEL_ = -1;
         this.zoomLevel_ = 0;
         this.zoomScale_ = 1;
         this.laneNum_ = 1;
@@ -384,7 +384,7 @@ class KonataRenderer {
         return this.zoomScale_;
     }
     calcScale_(level) {
-        return Math.pow(2, level * this.ZOOM_RATIO_);
+        return Math.pow(2, -level * this.ZOOM_RATIO_);
     }
     zoomAbs(zoomLevel, posX, posY, compensatePos = true) {
         let self = this;
@@ -393,16 +393,19 @@ class KonataRenderer {
             Math.min(self.zoomLevel_, self.MAX_ZOOM_LEVEL_),
             self.MIN_ZOOM_LEVEL_,
         );
+        // Keep old values to compute precise compensation around cursor position
         let oldScale = self.zoomScale_;
+        let oldLeft = self.viewPos_.left;
+        let oldTop = self.viewPos_.top;
         self.zoomScale_ = self.calcScale_(self.zoomLevel_);
         if (compensatePos) {
-            let oldLeft = self.viewPos_.left;
-            let oldTop = self.viewPos_.top;
-            let ratio = oldScale / self.zoomScale_;
-            self.moveLogicalPos([
-                oldLeft + (posX / self.opW_) * (1 - ratio),
-                oldTop + (posY / self.opH_) * (1 - ratio),
-            ]);
+            const opW_old = self.OP_W * oldScale;
+            const opH_old = self.OP_H * oldScale;
+            const opW_new = self.OP_W * self.zoomScale_;
+            const opH_new = self.OP_H * self.zoomScale_;
+            const newLeft = oldLeft + posX / opW_old - posX / opW_new;
+            const newTop = oldTop + posY / opH_old - posY / opH_new;
+            self.moveLogicalPos([newLeft, newTop]);
         }
         self.updateScaleParameter();
     }
@@ -412,120 +415,96 @@ class KonataRenderer {
     }
     drawPipelineTile_(tile, top, left) {
         let self = this;
+        let scale = self.zoomScale_;
+        let height = tile.clientHeight / self.opH_;
+        let width = tile.clientWidth / self.opW_;
+
         let ctx = tile.getContext("2d");
-        let width = tile.clientWidth;
-        let height = tile.clientHeight;
-        ctx.clearRect(0, 0, width, height);
-        // Pipeline background
         ctx.fillStyle = self.style_.pipelinePane.backgroundColor;
-        ctx.fillRect(0, 0, width, height);
-        // Optional stripe overlay for readability (very light)
-        if (self.style_.pipelinePane.backgroundColorStripeOverlay) {
+        ctx.fillRect(0, 0, tile.clientWidth, tile.clientHeight);
+
+        // 上側にはみ出ていた場合，暗く描画
+        let offsetY = 0;
+        if (top < 0) {
+            let bottom = -top * self.opH_ + self.PIXEL_ADJUST;
+            bottom = Math.min(tile.clientHeight, bottom);
             ctx.fillStyle =
-                self.style_.pipelinePane.backgroundColorStripeOverlay;
-            let stripeStep = Math.max(1, self.opH_ * 2);
-            let stripeH = Math.max(1, self.opH_);
-            for (let y = 0; y < height; y += stripeStep) {
-                ctx.fillRect(0, y, width, stripeH);
+                self.style_.pipelinePane.invalidBackgroundColor ||
+                "rgba(0,0,0,0.1)";
+            ctx.fillRect(0, 0, tile.clientWidth, bottom);
+            if (bottom >= tile.clientHeight) {
+                return;
             }
+            offsetY = -top;
+            top = 0;
         }
-        ctx.save();
-        ctx.font = self.stageFont_;
-        ctx.textBaseline = "alphabetic";
-        let maxY = Math.ceil(height / self.opH_);
-        for (let y = 0; y < maxY; y++) {
-            let op = self.getVisibleOp(top + y, this.opResolution);
-            if (!op) continue;
-            let py = y * self.opH_ + self.PIXEL_ADJUST;
-            // Row frame line (between rows) is disabled for cleaner view
-            for (let laneName in op.lanes) {
-                let lane = op.lanes[laneName];
-                for (let s of lane.stages) {
-                    let sx = (s.startCycle - left) * self.opW_;
-                    let ex = (s.endCycle - left) * self.opW_;
-                    if (ex - sx < 1) ex = sx + 1;
-                    let sy = py + self.lane_height_margin_;
-                    let eh = Math.max(
-                        0.5,
-                        self.opH_ - self.lane_height_margin_ * 2,
-                    );
-                    if (sx > width || ex < 0) continue;
-                    // Fill stage background with gradient (begin -> end) to match original
-                    let grad = ctx.createLinearGradient(0, sy, 0, sy + eh);
-                    grad.addColorStop(
-                        0,
-                        self.getStageColor_(laneName, s.name, true, op),
-                    );
-                    grad.addColorStop(
-                        1,
-                        self.getStageColor_(laneName, s.name, false, op),
-                    );
-                    ctx.fillStyle = grad;
-                    ctx.fillRect(sx, sy, ex - sx, eh);
-                    // Stage rectangle border
-                    if (self.canDrawFrame) {
-                        ctx.lineWidth = Number(
-                            self.style_.pipelinePane.borderWeight,
-                        );
-                        ctx.strokeStyle = self.style_.pipelinePane.borderColor;
-                        ctx.strokeRect(sx, sy, ex - sx, eh);
-                    }
-                    // Stage name text and stage length counters
-                    if (self.canDrawText) {
-                        ctx.fillStyle = self.style_.pipelinePane.fontColor;
-                        let fontSizeRaw = self.stageFontSize_;
-                        let textTop =
-                            py +
-                            (self.opH_ -
-                                self.lane_height_margin_ * 2 -
-                                fontSizeRaw) /
-                                2 +
-                            fontSizeRaw;
-                        let textLeft = (s.startCycle - left) * self.opW_;
-                        let margin = Math.max(
-                            0,
-                            (self.opW_ - (s.name.length * fontSizeRaw) / 2) / 2,
-                        );
-                        ctx.fillText(s.name, textLeft + margin, textTop);
-                        // Counter numbers for long stages
-                        let len = Math.max(0, s.endCycle - s.startCycle);
-                        for (let j = 1; j < len; j++) {
-                            if (
-                                s.startCycle + j >
-                                left + Math.ceil(width / self.opW_)
-                            )
-                                break;
-                            let numMargin = Math.max(
-                                0,
-                                (self.opW_ -
-                                    (String(j).length * fontSizeRaw) / 2) /
-                                    2,
-                            );
-                            ctx.fillText(
-                                String(j),
-                                textLeft + j * self.opW_ + numMargin,
-                                textTop,
-                            );
-                        }
-                    }
+
+        // タイルの描画
+        let skipRendering = false;
+        for (
+            let y = Math.floor(top);
+            y < top + height;
+            y += this.opH_ < 0.25 ? self.drawingInterval_ : 1
+        ) {
+            // 背景をストライプに
+            let pixelY = y - top + offsetY;
+            if (self.canDrawFrame) {
+                if (y % 2 == 0) {
+                    let fillTop = pixelY * this.opH_ + self.PIXEL_ADJUST;
+                    ctx.fillStyle =
+                        this.style_.pipelinePane.backgroundColorStripeOverlay ||
+                        "rgba(245,245,245,0.5)";
+                    ctx.fillRect(0, fillTop, tile.clientWidth, this.opH_);
                 }
             }
+            if (skipRendering) {
+                continue;
+            }
+
+            let op = null;
+            try {
+                op = self.getVisibleOp(y, this.opResolution);
+            } catch (e) {
+                console.log(e);
+                return;
+            }
+            if (op == null) {
+                // Since id can not be contiguous in gem5, there can be valid ops
+                // after null.
+                continue;
+            }
+
+            if (
+                !self.drawOp_(
+                    op,
+                    y - top + offsetY,
+                    left,
+                    left + width,
+                    scale,
+                    ctx,
+                )
+            ) {
+                skipRendering = true;
+            }
         }
-        // Dependency arrows
-        if (self.depArrowType_ !== "notShow" && self.canDrawDependency) {
+
+        // 依存関係
+        if (self.depArrowType_ != "notShow" && self.canDrawDependency) {
+            // Use the drawDependency method from backup if it exists, or keep simplified version
             ctx.strokeStyle = self.style_.pipelinePane.arrowColor;
             ctx.lineWidth = Number(self.style_.pipelinePane.arrowWeight);
-            const visibleBottom = top + Math.ceil(height / self.opH_);
-            for (let y = 0; y < Math.ceil(height / self.opH_); y++) {
-                let op = self.getVisibleOp(top + y, this.opResolution);
+            const visibleBottom = top + Math.ceil(height);
+            for (let y = Math.floor(top); y < top + height; y++) {
+                let op = self.getVisibleOp(y, this.opResolution);
                 if (!op) continue;
-                // Draw producers -> this op
+
                 for (let d of op.prods || []) {
                     let prod = self.getOpFromID(d.opID, this.opResolution);
                     if (!prod) continue;
-                    let cy = (op.id - top) * self.opH_ + self.opH_ / 2;
-                    let py2 = (prod.id - top) * self.opH_ + self.opH_ / 2;
-                    if (prod.id < top || prod.id > visibleBottom) continue; // limit within tile
+                    let cy = (y - top + offsetY) * self.opH_ + self.opH_ / 2;
+                    let py2 =
+                        (prod.id - top + offsetY) * self.opH_ + self.opH_ / 2;
+                    if (prod.id < top || prod.id > visibleBottom) continue;
                     let x1 = (Math.max(left, d.cycle) - left) * self.opW_;
                     let x0 =
                         (Math.max(
@@ -536,13 +515,13 @@ class KonataRenderer {
                         ) -
                             left) *
                         self.opW_;
+
                     if (self.depArrowType_ === "insideLine") {
                         ctx.beginPath();
                         ctx.moveTo(x0, py2);
                         ctx.lineTo(x1, cy);
                         ctx.stroke();
                     } else if (self.depArrowType_ === "leftSideCurve") {
-                        // Curve on left side
                         let ctrlX = Math.min(x0, x1) - self.opW_ * 2;
                         ctx.beginPath();
                         ctx.moveTo(x0, py2);
@@ -552,7 +531,22 @@ class KonataRenderer {
                 }
             }
         }
-        ctx.restore();
+
+        // 下側にはみ出ていた場合，暗く描画
+        let getVisibleBottom = () =>
+            self.hideFlushedOps_ ? self.konata_.lastRID : self.konata_.lastID;
+        let bottomOuterHeight = top - offsetY + height - 1 - getVisibleBottom();
+        if (bottomOuterHeight > 0) {
+            let begin =
+                tile.clientHeight -
+                bottomOuterHeight * self.opH_ +
+                self.PIXEL_ADJUST;
+            begin = Math.max(0, begin);
+            ctx.fillStyle =
+                self.style_.pipelinePane.invalidBackgroundColor ||
+                "rgba(0,0,0,0.1)";
+            ctx.fillRect(0, begin, tile.clientWidth, tile.clientHeight);
+        }
     }
     get canDrawDetailedly() {
         let laneHeight = this.laneH_ - this.lane_height_margin_ * 2;
@@ -569,6 +563,283 @@ class KonataRenderer {
     get canDrawText() {
         let laneHeight = this.laneH_ - this.lane_height_margin_ * 2;
         return laneHeight > this.config.drawTextThreshold;
+    }
+
+    /**
+     * @param {string} laneName
+     * @param {string} stageName
+     * @param {boolean} isBegin
+     * @param {Op} op
+     */
+    getStageColor_(laneName, stageName, isBegin, op) {
+        let self = this;
+
+        if (self.colorScheme_ == "Auto" || self.colorScheme_ == "Unique") {
+            if (stageName == "f" || stageName == "stl") {
+                return this.style_.pipelinePane.stallBackgroundColor;
+            }
+            let stageLevel = self.konata_.stageLevelMap.get(
+                laneName,
+                stageName,
+            );
+            let laneID = self.konata_.stageLevelMap.getLaneID(laneName);
+
+            let level =
+                self.colorScheme_ == "Auto"
+                    ? stageLevel.appearance
+                    : stageLevel.unique;
+            let color = this.style_.pipelinePane.stageBackgroundColor;
+            if (isBegin) {
+                let h =
+                    (250 - level * color.hRateBegin + laneID * 28 * 8) % 360;
+                return `hsl(${h},${color.sBegin}%,${color.lBegin}%)`;
+            } else {
+                let h = (250 - level * color.hRateEnd + laneID * 28 * 8) % 360;
+                return `hsl(${h},${color.sEnd}%,${color.lEnd}%)`;
+            }
+        } else if (self.colorScheme_ == "ThreadID") {
+            let stageLevel = self.konata_.stageLevelMap.get(
+                laneName,
+                stageName,
+            );
+            let level = op.tid;
+            let color = this.style_.pipelinePane.stageBackgroundColor;
+            if (isBegin) {
+                let h = (250 - level * color.hRateBegin) % 360;
+                let s = color.sBegin;
+                // A gradation direction is changed depending on the light/dark mode.
+                // if color.lBegin > 50, it is assumed the light mode
+                let l =
+                    (1000 +
+                        color.lBegin +
+                        (color.lBegin > 50 ? -1 : 1) *
+                            stageLevel.appearance *
+                            4) %
+                    100;
+                return `hsl(${h},${s}%,${l}%)`;
+            } else {
+                let h = (250 - level * color.hRateEnd) % 360;
+                let s = color.sEnd;
+                let l =
+                    (1000 +
+                        color.lEnd +
+                        (color.lEnd > 50 ? -1 : 1) *
+                            stageLevel.appearance *
+                            4) %
+                    100;
+                return `hsl(${h},${s}%,${l}%)`;
+            }
+        } else if (self.colorScheme_ in self.config.customColorSchemes) {
+            let style = self.config.customColorSchemes[self.colorScheme_];
+            let colorDef = style["defaultColor"];
+            if (laneName in style) {
+                if (stageName in style[laneName]) {
+                    colorDef = style[laneName][stageName];
+                }
+            }
+            let baseColor = this.style_.pipelinePane.stageBackgroundColor;
+            let h = colorDef.h;
+            let s = colorDef.s;
+            let l = colorDef.l;
+            if (isBegin) {
+                l = l == "auto" ? baseColor.lBegin : l;
+                s = s == "auto" ? baseColor.sBegin : s;
+            } else {
+                l = l == "auto" ? baseColor.lEnd : l;
+                s = s == "auto" ? baseColor.sEnd : s;
+            }
+            if (
+                typeof s == "number" ||
+                (typeof s == "string" && s.match(/^\d+$/))
+            ) {
+                s += "%";
+            }
+            if (
+                typeof l == "number" ||
+                (typeof l == "string" && l.match(/^\d+$/))
+            ) {
+                l += "%";
+            }
+            return `hsl(${h},${s},${l})`;
+        }
+        return self.colorScheme_;
+    }
+
+    drawLane_(op, h, startCycle, endCycle, scale, ctx, laneName) {
+        let self = this;
+
+        let fontSizeRaw = self.stageFontSize_;
+        ctx.font = self.stageFont_;
+
+        let lane = op.lanes[laneName].stages;
+        let top = h * self.opH_ + self.PIXEL_ADJUST;
+        for (let i = 0, len = lane.length; i < len; i++) {
+            let stage = lane[i];
+            if (stage.endCycle == 0) {
+                stage.endCycle = op.retiredCycle;
+            }
+            if (stage.endCycle < startCycle) {
+                continue;
+            } else if (endCycle < stage.startCycle) {
+                break; // stage.startCycle が endCycleを超えているなら，以降のステージはこのcanvasに描画されない．
+            }
+            if (stage.endCycle == stage.startCycle) {
+                continue;
+            }
+
+            let logLeft =
+                Math.max(startCycle - 1, stage.startCycle) - startCycle;
+            let logRight = Math.min(endCycle + 1, stage.endCycle) - startCycle;
+
+            let left = logLeft * self.opW_ + self.PIXEL_ADJUST;
+            let right = logRight * self.opW_ + self.PIXEL_ADJUST;
+            let rect = [
+                left,
+                top + self.lane_height_margin_,
+                right - left,
+                self.laneH_ - self.lane_height_margin_ * 2,
+            ];
+
+            let grad = ctx.createLinearGradient(0, top, 0, top + self.laneH_);
+            grad.addColorStop(
+                0,
+                self.getStageColor_(laneName, stage.name, true, op),
+            );
+            grad.addColorStop(
+                1,
+                self.getStageColor_(laneName, stage.name, false, op),
+            );
+
+            ctx.fillStyle = grad;
+            ctx.fillRect(rect[0], rect[1], rect[2], rect[3]);
+
+            if (self.canDrawFrame) {
+                ctx.lineWidth = this.style_.pipelinePane.borderWeight;
+                ctx.strokeRect(rect[0], rect[1], rect[2], rect[3]);
+            }
+
+            if (self.canDrawText) {
+                ctx.fillStyle = self.style_.pipelinePane.fontColor;
+                let textTop =
+                    top +
+                    (self.laneH_ - self.lane_height_margin_ * 2 - fontSizeRaw) /
+                        2 +
+                    fontSizeRaw;
+                let textLeft = (stage.startCycle - startCycle) * self.opW_;
+                for (
+                    let j = 1, len_in = stage.endCycle - stage.startCycle;
+                    j < len_in;
+                    j++
+                ) {
+                    if (j + stage.startCycle > endCycle) {
+                        // プロセッサのバグなどが原因で非常に長いステージが生成された場合に
+                        // fillText が呼ばれ続けて重くなるため描画を打ち切る
+                        break;
+                    }
+                    let margin = Math.max(
+                        0,
+                        (self.opW_ - (String(j).length * fontSizeRaw) / 2) / 2,
+                    );
+                    ctx.fillText(j, textLeft + j * self.opW_ + margin, textTop);
+                }
+                let margin = Math.max(
+                    0,
+                    (self.opW_ - (stage.name.length * fontSizeRaw) / 2) / 2,
+                );
+                ctx.fillText(stage.name, textLeft + margin, textTop);
+            }
+
+            if (op.flush) {
+                let bgc = this.style_.pipelinePane.flushedRegionColor;
+                ctx.fillStyle = bgc;
+                ctx.fillRect(rect[0], rect[1], rect[2], rect[3]);
+            }
+        }
+    }
+
+    /**
+     * @param {Op} op
+     * @param {number} h
+     * @param {number} startCycle
+     * @param {number} endCycle
+     * @param {number} scale
+     * @param {*} ctx
+     */
+    drawOp_(op, h, startCycle, endCycle, scale, ctx) {
+        let self = this;
+        let top = h * self.opH_ + self.PIXEL_ADJUST;
+
+        if (op.retiredCycle < startCycle) {
+            return true;
+        } else if (endCycle < op.fetchedCycle) {
+            return false;
+        }
+        if (op.retiredCycle == op.fetchedCycle) {
+            return true;
+        }
+        let l = startCycle > op.fetchedCycle ? startCycle - 1 : op.fetchedCycle;
+        l -= startCycle;
+        let r = endCycle >= op.retiredCycle ? op.retiredCycle : endCycle + 1;
+        r -= startCycle;
+        let left = l * self.opW_ + self.PIXEL_ADJUST;
+        let right = r * self.opW_ + self.PIXEL_ADJUST;
+
+        let stageLevelMap = this.konata_.stageLevelMap;
+        let laneNum = stageLevelMap.laneNum;
+
+        if (self.canDrawDetailedly) {
+            // 枠内に表示の余地がある場合
+            ctx.strokeStyle = this.style_.pipelinePane.borderColor;
+
+            for (let laneName in op.lanes) {
+                let laneTop = self.splitLanes_
+                    ? h + stageLevelMap.getLaneID(laneName) / laneNum
+                    : h; // logical pos
+                self.drawLane_(
+                    op,
+                    laneTop,
+                    startCycle,
+                    endCycle,
+                    scale,
+                    ctx,
+                    laneName,
+                );
+            }
+        } else {
+            // 十分小さい場合は簡略化モード
+            if (
+                self.colorScheme_ != "Auto" &&
+                self.colorScheme_ != "Unique" &&
+                self.colorScheme_ != "ThreadID" &&
+                !(self.colorScheme_ in self.config.customColorSchemes)
+            ) {
+                ctx.fillStyle = self.colorScheme_;
+            } else {
+                ctx.fillStyle = "#888888";
+            }
+
+            // 表示位置の計算
+            let laneHeight = self.laneH_ - self.lane_height_margin_ * 2;
+            let laneTop = top + self.lane_height_margin_;
+
+            // 縮小率が高すぎると表示が小さくなりすぎて何も見えなくなるので，
+            // 最低1ピクセルは表示するように補正
+            if (right - left < 1) {
+                right = left + 1;
+            }
+            if (laneHeight < 0.5) {
+                laneHeight = 0.5;
+            }
+
+            ctx.fillRect(left, laneTop, right - left, laneHeight);
+
+            if (op.flush) {
+                let bgc = this.style_.pipelinePane.flushedRegionColor; // 黒の半透明をかぶせる
+                ctx.fillStyle = bgc;
+                ctx.fillRect(left, laneTop, right - left, laneHeight);
+            }
+        }
+        return true;
     }
 }
 

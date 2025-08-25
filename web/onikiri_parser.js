@@ -26,6 +26,8 @@ class OnikiriParser {
         this.closed_ = false;
         this.error_ = false;
         this.numWarning_ = 0;
+        this.yieldInterval_ = 4096; // Lines processed before yielding control
+        this.yieldCounter_ = 0;
     }
     close() {
         this.closed_ = true;
@@ -49,16 +51,27 @@ class OnikiriParser {
     get name() {
         return "OnikiriParser";
     }
-    setFile(file, updateCallback, finishCallback, errorCallback) {
+    setFile(
+        file,
+        updateCallback,
+        finishCallback,
+        errorCallback,
+        config = null,
+    ) {
         this.file_ = file;
         this.updateCallback_ = updateCallback;
         this.finishCallback_ = finishCallback;
         this.errorCallback_ = errorCallback;
+        // Use config for yield interval if provided
+        if (config && config.parsingYieldInterval) {
+            this.yieldInterval_ = config.parsingYieldInterval;
+        }
         this.startTime_ = new Date().getTime();
         this.startParsing();
         file.readlines(
             this.parseLine.bind(this),
             this.finishParsing.bind(this),
+            config,
         );
     }
     getOp(id, resolution = 0) {
@@ -86,14 +99,14 @@ class OnikiriParser {
         this.complete_ = false;
         this.curCycle_ = 0;
     }
-    parseLine(line) {
+    async parseLine(line) {
         try {
-            this.parseLineBody_(line);
+            await this.parseLineBody_(line);
         } catch (e) {
             this.errorCallback_(false, e);
         }
     }
-    parseLineBody_(line) {
+    async parseLineBody_(line) {
         if (this.closed_ || this.error_) return;
         if (this.curLine_ == 1) {
             if (!line.match(/^Kanata/)) {
@@ -112,6 +125,13 @@ class OnikiriParser {
                 this.updateCount_,
             );
             this.updateCount_++;
+        }
+
+        // Yield control to event loop periodically to prevent UI freezing
+        this.yieldCounter_++;
+        if (this.yieldCounter_ >= this.yieldInterval_) {
+            this.yieldCounter_ = 0;
+            await new Promise((resolve) => setTimeout(resolve, 0));
         }
     }
     finishParsing() {

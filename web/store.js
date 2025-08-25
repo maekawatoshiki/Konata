@@ -226,6 +226,7 @@
                                     `Failed to load '${(file && file.name) || file}': ${errorMsg}`,
                                 );
                             },
+                            self.config, // Pass config for yield interval settings
                         );
                     } catch (e) {
                         konata.close();
@@ -562,7 +563,8 @@
                     }
                     const r = self.activeTab.renderer;
                     const step = 1 / ((self.config.drawZoomFactor || 1) * 2);
-                    const diff = -zoomDir * step; // +1 => zoom in
+                    // zoomDir: -1 => zoom in (increase scale), +1 => zoom out (decrease scale)
+                    const diff = zoomDir * step;
                     r.zoomAbs(r.zoomLevel + diff, posX, posY, true);
                     self.trigger(CHANGE.PANE_CONTENT_UPDATE);
                 });

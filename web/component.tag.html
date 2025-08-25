@@ -1,0 +1,68 @@
+<!-- Splitter window copied for web -->
+<splitter_window class="splitter_window">
+
+    <div class="splitter_window_container" ref="container">
+        <div ref="first_pane">
+            <yield from="first_pane"/>
+        </div>
+        <div ref="splitter">
+            <yield from="splitter"/>
+        </div>
+        <div ref="second_pane">
+            <yield from="second_pane"/>
+        </div>
+    </div>
+
+    <style>
+        splitter_window.splitter_window { width: 100%; height: 100%; display: block; }
+        .splitter_window_container { width: 100%; height: 100%; display: flex; flex: auto; }
+        div { position: relative; }
+    </style>
+
+    <script>
+        let self = this;
+        self.lastPos = 0;
+        self.inDrag = false;
+        self.isHorizontal = true;
+        if ("direction" in self.opts) {
+            if (self.opts.direction == "horizontal") {
+                self.isHorizontal = true;
+            }
+            else if (self.opts.direction == "vertical") {
+                self.isHorizontal = false;
+            }
+            else {
+                console.log("Unknown direction.");
+            }
+        }
+        self.on("mount", function(){
+            let splitter = self.refs.splitter; splitter.onmousedown = self.onMouseDown;
+            window.addEventListener("mousemove", self.onMouseMove);
+            window.addEventListener("mouseup", self.onMouseUp);
+            self.resizeObserver.observe(self.refs.container);
+            let initPos = ("splitter_pos" in self.opts) ? self.opts.splitter_pos : "30%";
+            if (self.isHorizontal) {
+                self.refs.first_pane.style.width = initPos;
+                self.refs.first_pane.style.height  = "100%";
+                self.refs.splitter.style.height   = "100%";
+                self.refs.second_pane.style.height = "100%";
+            }
+            else {
+                self.refs.first_pane.style.height = initPos;
+                self.refs.first_pane.style.width  = "100%";
+                self.refs.splitter.style.width   = "100%";
+                self.refs.second_pane.style.width = "100%";
+            }
+            self.refs.container.style.flexDirection = self.isHorizontal ? "row" : "column";
+            self.update();
+        });
+        self.on("unmount", function(){ window.removeEventListener("mousemove", self.onMouseMove); window.removeEventListener("mouseup", self.onMouseUp); self.resizeObserver.disconnect(); });
+        self.onMouseDown = function(e){ self.lastPos = self.isHorizontal ? e.clientX : e.clientY; self.inDrag = true; e.preventDefault(); };
+        self.onMouseUp = function(){ self.inDrag = false; };
+        self.onMouseMove = function(e){ if (!self.inDrag) return; let container = self.refs.container; let containerSize = self.isHorizontal ? container.offsetWidth : container.offsetHeight; let mousePos = self.isHorizontal ? e.clientX : e.clientY; let pos = Math.min(Math.max(mousePos, 0), containerSize); let diff = pos - self.lastPos; self.lastPos = pos; let first_pane = self.refs.first_pane; let splitterPos = self.isHorizontal ? first_pane.offsetWidth : first_pane.offsetHeight; splitterPos += diff; self.UpdatePaneSize(splitterPos); self.trigger("splitter_pos_updated", splitterPos); };
+        self.resizeObserver = new ResizeObserver( () => { let first_pane = self.refs.first_pane; let splitterPos = self.isHorizontal ? first_pane.offsetWidth : first_pane.offsetHeight; self.UpdatePaneSize(splitterPos); self.trigger("splitter_pos_updated", splitterPos); } );
+        self.UpdatePaneSize = function(splitterPos){ let container = self.refs.container; let left = self.refs.first_pane; let splitter = self.refs.splitter; let right = self.refs.second_pane; if (self.isHorizontal) { left.style.width = `${splitterPos}px`; right.style.width = `${container.offsetWidth - splitterPos - splitter.offsetWidth}px`; } else { left.style.height = `${splitterPos}px`; right.style.height = `${container.offsetHeight - splitterPos - splitter.offsetHeight}px`; } self.update(); };
+        self.on("update_pane_size", (splitterPos) => { self.UpdatePaneSize(splitterPos); });
+    </script>
+</splitter_window>
+

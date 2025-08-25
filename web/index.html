@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Konata Web</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"
+        >
+
+        <link rel="stylesheet" type="text/css" href="./theme/base.css">
+        <link
+            rel="stylesheet"
+            type="text/css"
+            href="./theme/light/style.css"
+            id="konata_theme_css"
+        >
+
+        <style>
+            /* Hide Electron tab bar for web single-view */
+            app_tabbar { display: none !important; }
+            /* Simple toolbar */
+            .web-toolbar { padding: 0.5rem; background: #f8f9fa; border-bottom: 1px solid #ddd; }
+            .web-toolbar .spacer { flex: 1 1 auto; }
+            /* Fill viewport */
+            html, body { height: 100%; }
+            body { margin: 0; display: flex; flex-direction: column; }
+            .app-root { position: relative; flex: 1 1 auto; min-height: 0; }
+            /* Ensure canvas container fills */
+            app { display: block; position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+        </style>
+    </head>
+    <body>
+        <div class="web-toolbar d-flex align-items-center">
+            <div>
+                <input id="fileInput" type="file" class="form-control-file">
+            </div>
+            <div class="ml-3">
+                <button id="btnStats" class="btn btn-sm btn-outline-secondary">
+                    Stats
+                </button>
+                <button
+                    id="btnSettings"
+                    class="btn btn-sm btn-outline-secondary"
+                >
+                    Settings
+                </button>
+                <button id="btnFind" class="btn btn-sm btn-outline-secondary">
+                    Find
+                </button>
+            </div>
+            <div class="spacer"></div>
+            <div class="form-inline">
+                <label class="mr-2 mb-0">Theme</label>
+                <select id="themeSelect" class="custom-select custom-select-sm">
+                    <option value="light" selected>Light</option>
+                    <option value="dark">Dark</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="app-root">
+            <app></app>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/riot@3/riot+compiler.min.js"></script>
+
+        <script src="./loader.js"></script>
+        <script src="./themes.js"></script>
+        <script src="./zlib.js"></script>
+        <script src="./config.js"></script>
+        <script src="./file_reader.js"></script>
+        <script src="./menu.js"></script>
+        <script src="./store.js"></script>
+
+        <script
+            type="riot/tag"
+            src="./component.tag.html"
+            charset="UTF-8"
+        ></script>
+        <script
+            type="riot/tag"
+            src="./dialogs.tag.html"
+            charset="UTF-8"
+        ></script>
+        <script type="riot/tag" src="./app.tag.html" charset="UTF-8"></script>
+
+        <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+
+        <script>
+            var StoreMod = CJS.require('store.js');
+            var store = new StoreMod.Store();
+
+            var dispatcher = store;
+            var ACTION = StoreMod.ACTION;
+            var CHANGE = StoreMod.CHANGE;
+
+            window.store = store;
+            window.dispatcher = dispatcher;
+            window.ACTION = ACTION;
+            window.CHANGE = CHANGE;
+
+            // Disable dependency arrows by default (and override old saved values)
+            if (store.config.depArrowType !== 'notShow') {
+                dispatcher.trigger(ACTION.KONATA_SET_DEP_ARROW_TYPE, 'notShow');
+            }
+
+            document.getElementById('fileInput').addEventListener('change', function(e) {
+                var f = e.target.files && e.target.files[0];
+                if (f) dispatcher.trigger(ACTION.FILE_OPEN, f);
+            });
+            document.getElementById('btnStats').addEventListener('click', function(){
+                dispatcher.trigger(ACTION.FILE_SHOW_STATS);
+            });
+            document.getElementById('btnSettings').addEventListener('click', function(){
+                dispatcher.trigger(ACTION.FILE_SHOW_SETTINGS);
+            });
+            document.getElementById('btnFind').addEventListener('click', function(){
+                dispatcher.trigger(ACTION.COMMAND_PALETTE_OPEN, 'f ');
+            });
+            var themeSelect = document.getElementById('themeSelect');
+            // Sync selector with persisted config
+            themeSelect.value = store.config.theme;
+            document.getElementById('themeSelect').addEventListener('change', function(e){
+                dispatcher.trigger(ACTION.KONATA_CHANGE_UI_COLOR_THEME, e.target.value);
+            });
+
+            riot.mount('app');
+        </script>
+    </body>
+</html>

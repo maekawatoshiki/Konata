@@ -1,0 +1,12 @@
+/* Copied from theme/dark/style.css for web */
+@import url("../base.css");
+body {
+    background: #262930;
+    color: #f0f0f0;
+}
+.progress_bar_active {
+    background-color: #ffc800;
+}
+.progress_bar_background {
+    background-color: #666;
+}

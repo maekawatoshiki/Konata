@@ -1,0 +1,12 @@
+/* Copied from theme/light/style.css for web */
+@import url("../base.css");
+body {
+    background: #ffffff;
+    color: #444;
+}
+.progress_bar_active {
+    background-color: #aa1e1e;
+}
+.progress_bar_background {
+    background-color: #bbb;
+}

@@ -1,0 +1,103 @@
+(function () {
+    // Register theme JSON modules so konata_renderer can require() them
+    let dark = {
+        fontSize: "14",
+        fontFamily:
+            "SFMono-Regular, Consolas, 'Liberation Mono', Menlo, Courier, monospace",
+        fontStyle: "normal",
+        fontColor: "#222222",
+        labelPane: {
+            marginLeft: "5",
+            backgroundColor: "#303340",
+            fontColor: "#c7c8ca",
+        },
+        pipelinePane: {
+            backgroundColor: "#262930",
+            backgroundColorStripeOverlay: "#ffffff08",
+            fontColor: "#f0f0f0",
+            borderColor: "#f0f0f0",
+            borderWeight: "0.5",
+            stageBackgroundColor: {
+                hRateBegin: "55",
+                sBegin: "40",
+                lBegin: "40",
+                hRateEnd: "55",
+                sEnd: "40",
+                lEnd: "40",
+            },
+            stallBackgroundColor: "hsl(0,0%,50%)",
+            invalidBackgroundColor: "rgb(30,30,30)",
+            arrowColor: "rgb(255,200,0)",
+            arrowWeight: "1",
+            flushedRegionColor: "rgba(0,0,0,0.5)",
+        },
+    };
+    let light = {
+        fontSize: "14",
+        fontFamily:
+            "SFMono-Regular, Consolas, 'Liberation Mono', Menlo, Courier, monospace",
+        fontStyle: "normal",
+        fontColor: "#222222",
+        labelPane: {
+            marginLeft: "5",
+            backgroundColor: "#f4f4f4",
+            fontColor: "#222222",
+        },
+        pipelinePane: {
+            backgroundColor: "#ffffff",
+            backgroundColorStripeOverlay: "#00000010",
+            fontColor: "#444444",
+            borderColor: "#444444",
+            borderWeight: "1",
+            stageBackgroundColor: {
+                hRateBegin: "55",
+                sBegin: "95",
+                lBegin: "95",
+                hRateEnd: "55",
+                sEnd: "70",
+                lEnd: "80",
+            },
+            stallBackgroundColor: "#aaaaaa",
+            invalidBackgroundColor: "rgb(128,128,128)",
+            arrowColor: "rgb(170,30,30)",
+            arrowWeight: "1.0",
+            flushedRegionColor: "rgba(0,0,0,0.4)",
+        },
+        colorScheme: {
+            Onikiri: {
+                defaultColor: "#aaffaa",
+                0: {
+                    F: "#b9a5e8",
+                    Rn: "#a0c0ff",
+                    D: "#8cdddf",
+                    Sr: "#9bed88",
+                    Sw: "#83d2ab",
+                    rs: "#73d29b",
+                    Wku: "#abed88",
+                    Slc: "#e6d990",
+                    rsc: "#83e2ab",
+                    Ip: "#eebb77",
+                    I: "#eeaa88",
+                    X: "#ee7777",
+                    Xam: "#ee7777",
+                    Xbm: "#ee7777",
+                    Xlu: "#ee7777",
+                    Xlm: "#ee7777",
+                    Wb: "#dd8899",
+                    Cm: "#cca5c8",
+                    f: "#aaaaaa",
+                    iXlR0: "#ee7777",
+                    iXlR1: "#ee7777",
+                    iXlR2: "#ee7777",
+                },
+                1: { stl: "#aaaaaa" },
+            },
+        },
+    };
+    CJS.register("theme/dark/style.json", function (require, module, exports) {
+        module.exports = dark;
+    });
+    CJS.register("theme/light/style.json", function (require, module, exports) {
+        module.exports = light;
+    });
+})();

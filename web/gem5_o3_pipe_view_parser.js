@@ -95,6 +95,7 @@ class Gem5O3PipeViewParser {
         this.updateCallback_ = updateCallback;
         this.finishCallback_ = finishCallback;
         this.errorCallback_ = errorCallback;
+        this.config_ = config;
         // Use config for yield interval if provided
         if (config && config.parsingYieldInterval) {
             this.yieldInterval_ = config.parsingYieldInterval;
@@ -131,6 +132,9 @@ class Gem5O3PipeViewParser {
     startParsing() {
         this.complete_ = false;
         this.curCycle_ = 0;
+        // Disable page compression during parsing for speed
+        if (this.opListBody_ && this.opListBody_.setCompressionEnabled)
+            this.opListBody_.setCompressionEnabled(false);
     }
     async parseLine(line) {
         try {
@@ -250,10 +254,11 @@ class Gem5O3PipeViewParser {
         this.updateTimer_--;
         if (this.updateTimer_ < 0) {
             this.updateTimer_ = 1024 * 32;
-            this.updateCallback_(
-                (1.0 * this.file_.bytesRead) / (this.file_.fileSize || 1),
-                this.updateCount_,
-            );
+            let percent =
+                (1.0 * this.file_.bytesRead) / (this.file_.fileSize || 1);
+            // Avoid reaching 100% before parsing finishes
+            percent = Math.min(percent, 0.98);
+            this.updateCallback_(percent, this.updateCount_);
             this.updateCount_++;
         }
 
@@ -264,7 +269,7 @@ class Gem5O3PipeViewParser {
             await new Promise((resolve) => setTimeout(resolve, 0));
         }
     }
-    finishParsing() {
+    async finishParsing() {
         if (this.closed_) return;
         for (let k in this.parsingOpList_) {
             let op = this.parsingOpList_[k];
@@ -274,6 +279,19 @@ class Gem5O3PipeViewParser {
             this.opListBody_.setOp(op.id, op);
         }
         this.opListBody_.setParsedLastID(this.lastNotFlushedID);
+        // Finalization phase: compress pages incrementally with progress
+        const shouldCompact = !this.config_ || this.config_.compactOnFinish !== 0;
+        if (shouldCompact && this.opListBody_ && this.opListBody_.setCompressionEnabled) {
+            this.opListBody_.setCompressionEnabled(true);
+            if (this.opListBody_.compressAllAsync) {
+                await this.opListBody_.compressAllAsync((done, total) => {
+                    let percent = 0.98 + 0.02 * (total > 0 ? done / total : 1);
+                    this.updateCallback_(Math.min(percent, 0.999), this.updateCount_);
+                });
+            } else if (this.opListBody_.compressAll) {
+                this.opListBody_.compressAll();
+            }
+        }
         this.complete_ = true;
         this.updateCallback_(1.0, this.updateCount_);
         this.finishCallback_();

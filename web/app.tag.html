@@ -501,7 +501,10 @@
 
 <app_progress_bar>
     <div class="progress_bar_container">
-        <div each="{bar, barID in barList}" class={"progress_bar_" + ((store.activeTabID == bar.tabID) ? ("active " + bar.barType) : "background")} ref={"progress_bar_" + barID}></div>
+        <div each="{bar, barID in barList}"
+             class={"progress_bar_" + ((store.activeTabID == bar.tabID) ? ("active " + bar.barType) : "background")}
+             style={"width:" + Math.floor(bar.progress * 100) + "%"}
+             ref={"progress_bar_" + barID}></div>
     </div>
     <script>
         /* globals dispatcher store ACTION CHANGE */
@@ -547,16 +550,8 @@
         });
 
         self.updateBars = function() {
+            // Declarative style binding keeps widths across re-renders
             self.update();
-            self.on('updated', function() {
-                for (let id in self.barList) {
-                    let b = self.barList[id];
-                    let div = self.refs['progress_bar_' + id];
-                    if (div) {
-                        div.style.width = Math.floor(b.progress * 100) + '%';
-                    }
-                }
-            });
         };
     </script>
 </app_progress_bar>

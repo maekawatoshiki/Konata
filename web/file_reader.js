@@ -47,8 +47,14 @@
                         let stream;
                         if (self.file_ instanceof File) {
                             stream = self.file_.stream();
+                            self.fileSize_ = self.file_.size || 0;
                         } else {
                             const res = await fetch(self.file_);
+                            // Try to use Content-Length when available
+                            const len = res.headers && res.headers.get
+                                ? Number(res.headers.get("Content-Length"))
+                                : 0;
+                            if (!Number.isNaN(len) && len > 0) self.fileSize_ = len;
                             stream = res.body;
                         }
                         // gzip support
@@ -90,30 +96,29 @@
                             }
                         }
                         // Decode to text and stream lines
-                        const reader = stream
-                            .pipeThrough(new TextDecoderStream())
-                            .getReader();
-                        let { value, done } = await reader.read();
+                        // Read bytes and decode manually to count true byte progress
+                        const reader = stream.getReader();
+                        const decoder = new TextDecoder();
                         let carry = "";
                         let lineCount = 0;
-                        while (!done) {
-                            self.bytesRead_ += value.length;
-                            let chunk = carry + value;
+                        while (true) {
+                            const { value, done } = await reader.read();
+                            if (done) break;
+                            if (value && value.byteLength) self.bytesRead_ += value.byteLength;
+                            const text = decoder.decode(value, { stream: true });
+                            let chunk = carry + text;
                             let parts = chunk.split(/\r?\n/);
                             carry = parts.pop();
                             for (let line of parts) {
                                 await onLine(line);
                                 lineCount++;
-                                // Yield control periodically during streaming to prevent UI freezing
                                 if (lineCount % yieldInterval === 0) {
-                                    await new Promise((resolve) =>
-                                        setTimeout(resolve, 0),
-                                    );
+                                    await new Promise((resolve) => setTimeout(resolve, 0));
                                 }
                             }
-                            ({ value, done } = await reader.read());
                         }
-                        if (carry) await onLine(carry);
+                        const tail = decoder.decode();
+                        if (tail || carry) await onLine(carry + tail);
                         onFinish();
                     } catch (e) {
                         console.error(e);

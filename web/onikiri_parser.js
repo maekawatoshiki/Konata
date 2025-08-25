@@ -62,6 +62,7 @@ class OnikiriParser {
         this.updateCallback_ = updateCallback;
         this.finishCallback_ = finishCallback;
         this.errorCallback_ = errorCallback;
+        this.config_ = config;
         // Use config for yield interval if provided
         if (config && config.parsingYieldInterval) {
             this.yieldInterval_ = config.parsingYieldInterval;
@@ -98,6 +99,9 @@ class OnikiriParser {
     startParsing() {
         this.complete_ = false;
         this.curCycle_ = 0;
+        // Disable page compression during parsing for speed
+        if (this.opListBody_ && this.opListBody_.setCompressionEnabled)
+            this.opListBody_.setCompressionEnabled(false);
     }
     async parseLine(line) {
         try {
@@ -120,10 +124,11 @@ class OnikiriParser {
         this.updateTimer_--;
         if (this.updateTimer_ < 0) {
             this.updateTimer_ = 1024 * 32;
-            this.updateCallback_(
-                (1.0 * this.file_.bytesRead) / (this.file_.fileSize || 1),
-                this.updateCount_,
-            );
+            let percent =
+                (1.0 * this.file_.bytesRead) / (this.file_.fileSize || 1);
+            // Avoid reaching 100% before parsing finishes
+            percent = Math.min(percent, 0.98);
+            this.updateCallback_(percent, this.updateCount_);
             this.updateCount_++;
         }
 
@@ -134,7 +139,7 @@ class OnikiriParser {
             await new Promise((resolve) => setTimeout(resolve, 0));
         }
     }
-    finishParsing() {
+    async finishParsing() {
         if (this.closed_) return;
         for (let parsingID_Str of this.parsingOpList_.parsingID_List) {
             let parsingID = Number(parsingID_Str);
@@ -152,6 +157,20 @@ class OnikiriParser {
             this.opListBody_.setOp(parsingID, parsingOp);
         }
         this.opListBody_.setParsedLastID(this.parsingOpList_.parsingLastID);
+        // Finalization phase: compress pages incrementally with progress
+        // Progress advances from 0.98 -> 1.0 during this phase
+        const shouldCompact = !this.config_ || this.config_.compactOnFinish !== 0;
+        if (shouldCompact && this.opListBody_ && this.opListBody_.setCompressionEnabled) {
+            this.opListBody_.setCompressionEnabled(true);
+            if (this.opListBody_.compressAllAsync) {
+                await this.opListBody_.compressAllAsync((done, total) => {
+                    let percent = 0.98 + 0.02 * (total > 0 ? done / total : 1);
+                    this.updateCallback_(Math.min(percent, 0.999), this.updateCount_);
+                });
+            } else if (this.opListBody_.compressAll) {
+                this.opListBody_.compressAll();
+            }
+        }
         this.complete_ = true;
         let elapsed = new Date().getTime() - this.startTime_;
         this.updateCallback_(1.0, this.updateCount_);

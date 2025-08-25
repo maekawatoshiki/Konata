@@ -12,9 +12,12 @@ class BigKeyValueStoreConfigLarge {
 }
 class BigKeyValueStoreConfigDefault {
     constructor() {
-        this.PAGE_SIZE_BITS_MAP = [8, 8, 8, 8, 8];
+        // Relax defaults to reduce compression thrashing during parsing
+        // Larger pages -> fewer page switches, higher memory locality
+        this.PAGE_SIZE_BITS_MAP = [10, 10, 10, 10, 10]; // 1024 entries per level
         this.PAGE_LEVEL_MAP = [1, 8, 64, 512, 4096];
-        this.MAX_DECOMPRESSED_PAGES = 4;
+        // Allow many more pages to remain decompressed while loading
+        this.MAX_DECOMPRESSED_PAGES = 128;
         this.CACHE_SIZE = 1024 * 32;
     }
 }
@@ -175,6 +178,7 @@ class OpPageStore {
         this.opPages_ = [];
         this.decompressedPageSet_ = new Set();
         this.numPageDecompress_ = 0;
+        this.compressionEnabled_ = true;
     }
     idToPageIndex(id) {
         return id >> this.pageSizeBits_;
@@ -185,6 +189,9 @@ class OpPageStore {
     close() {
         this.opPages_ = [];
         this.decompressedPageSet_ = new Set();
+    }
+    setCompressionEnabled(enabled) {
+        this.compressionEnabled_ = !!enabled;
     }
     set(id, op) {
         if (id < 0) return;
@@ -227,16 +234,48 @@ class OpPageStore {
                 this.numPageDecompress_++;
             }
             this.decompressedPageSet_.add(pageIndex);
-            if (this.decompressedPageSet_.size > this.maxDecompressedPages_) {
+            if (
+                this.compressionEnabled_ &&
+                this.decompressedPageSet_.size > this.maxDecompressedPages_
+            ) {
                 let compress = this.decompressedPageSet_.keys().next().value;
                 this.decompressedPageSet_.delete(compress);
                 let target = this.opPages_[compress];
-                target.purgeDecompressedData();
+                if (this.compressionEnabled_) target.purgeDecompressedData();
             }
         } else {
             this.decompressedPageSet_.delete(pageIndex);
             this.decompressedPageSet_.add(pageIndex);
         }
+    }
+    compressAll() {
+        if (!this.opPages_) return;
+        for (let i = 0; i < this.opPages_.length; i++) {
+            let p = this.opPages_[i];
+            if (!p) continue;
+            p.compress();
+            // Ensure we actually drop decompressed data now
+            if (!p.isCompressing_) {
+                p.purgeDecompressedData();
+            }
+        }
+        this.decompressedPageSet_ = new Set();
+    }
+    async compressAllAsync(onPage, yieldEvery = 8) {
+        if (!this.opPages_) return 0;
+        let processed = 0;
+        for (let i = 0; i < this.opPages_.length; i++) {
+            let p = this.opPages_[i];
+            if (!p) continue;
+            // Yield periodically to keep UI responsive
+            if (processed % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
+            p.compress();
+            if (!p.isCompressing_) p.purgeDecompressedData();
+            processed++;
+            if (onPage) onPage(processed);
+        }
+        this.decompressedPageSet_ = new Set();
+        return processed;
     }
 }
 
@@ -281,6 +320,7 @@ class BigKeyValueStore {
         this.setup_();
         this.numAccess_ = 0;
         this.numHit_ = 0;
+        this.compressionEnabled_ = true;
     }
     setup_() {
         this.page_ = [];
@@ -297,6 +337,7 @@ class BigKeyValueStore {
                     this.config_.MAX_DECOMPRESSED_PAGES,
                 ),
             );
+            this.page_[i].setCompressionEnabled(this.compressionEnabled_);
         }
         this.cache_ = new OpCache(this.config_.CACHE_SIZE);
     }
@@ -305,6 +346,24 @@ class BigKeyValueStore {
             page.close();
         });
         this.setup_();
+    }
+    setCompressionEnabled(enabled) {
+        this.compressionEnabled_ = !!enabled;
+        this.page_.forEach((p) => p.setCompressionEnabled(this.compressionEnabled_));
+    }
+    compressAll() {
+        this.page_.forEach((p) => p.compressAll());
+    }
+    async compressAllAsync(onProgress) {
+        // Count total pages first
+        let total = 0;
+        for (let ps of this.page_) total += (ps.opPages_ && ps.opPages_.length) || 0;
+        let done = 0;
+        for (let ps of this.page_) {
+            done += await ps.compressAllAsync(() => {
+                if (onProgress) onProgress(done, total);
+            });
+        }
     }
     invalidateCache_(id) {
         this.cache_.invalidate(id);
@@ -389,6 +448,15 @@ class OpList {
     }
     purge() {
         this.store_.close();
+    }
+    setCompressionEnabled(enabled) {
+        this.store_.setCompressionEnabled(enabled);
+    }
+    compressAll() {
+        this.store_.compressAll();
+    }
+    async compressAllAsync(onProgress) {
+        await this.store_.compressAllAsync(onProgress);
     }
     setParsedLastID(id) {
         this.parsedLastID_ = id;

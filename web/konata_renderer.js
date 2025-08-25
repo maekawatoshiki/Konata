@@ -335,10 +335,7 @@ class KonataRenderer {
             return;
         }
         // Text
-        let fontSize = Number(self.style_.fontSize);
-        let fontFamily = self.style_.fontFamily;
-        let fontStyle = self.style_.fontStyle;
-        ctx.font = `${fontStyle} ${fontSize}px ${fontFamily}`;
+        ctx.font = self.labelFont_;
         ctx.fillStyle = self.style_.labelPane.fontColor;
         let lineH = self.opH_;
         let maxY = Math.ceil(height / lineH);

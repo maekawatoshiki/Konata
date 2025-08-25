@@ -134,6 +134,11 @@
         <div class="form-group">
             <input ref="filter" class="form-control" type="text" placeholder="Filter settings by name or description">
         </div>
+        <div class="form-group">
+            <label><strong>Color Scheme</strong></label>
+            <select class="form-control" ref="color_scheme_select"></select>
+            <small>Select a predefined scheme (e.g., ChampSim, RSD) or built-ins (Auto, Unique, ThreadID).</small>
+        </div>
         <table class="table table-striped table-sm table-hover">
             <tr each="{data, key in opts.settings}">
                 <td>
@@ -160,6 +165,7 @@
             }, {
                 'shown.bs.modal': () => {
                     dialog.refs.filter.focus();
+                    self.populateColorSchemeSelect();
                 },
                 'hidden.bs.modal': () => {
                     rc.trigger(ACTION.FILE_CLOSE_SETTINGS);
@@ -210,6 +216,28 @@
                 }
             }
             return settings;
+        };
+
+        self.populateColorSchemeSelect = function() {
+            let sel = self.refs.dialog.refs.color_scheme_select;
+            // Clear current options
+            while (sel.firstChild) sel.removeChild(sel.firstChild);
+            // Built-in options
+            let builtins = ['Auto', 'Unique', 'ThreadID'];
+            // Custom schemes from config
+            let customs = Object.keys(store.config.customColorSchemes || {});
+            let options = builtins.concat(customs);
+            for (let name of options) {
+                let opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                sel.appendChild(opt);
+            }
+            sel.value = store.config.colorScheme;
+            sel.onchange = function() {
+                let scheme = sel.value;
+                rc.trigger(ACTION.KONATA_CHANGE_COLOR_SCHEME, store.activeTabID, scheme);
+            };
         };
     </script>
 </app_settings_dialog>

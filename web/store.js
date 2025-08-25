@@ -341,6 +341,7 @@
                         self.config.colorScheme = scheme;
                         self.activeTab.colorScheme = scheme;
                         self.activeTab.renderer.changeColorScheme(scheme);
+                        if (self.config && self.config.save) self.config.save();
                         self.trigger(CHANGE.PANE_CONTENT_UPDATE);
                         self.trigger(CHANGE.MENU_UPDATE);
                     },

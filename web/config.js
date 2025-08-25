@@ -54,6 +54,53 @@
                         },
                         1: { stl: { h: "0", s: "0", l: "auto" } },
                     },
+                    ChampSim: {
+                        0: {
+                            Fp: { h: "300", s: "auto", l: "auto" },
+                            Fc: { h: "300", s: "auto", l: "auto" },
+                            Fi: { h: "260", s: "50", l: "auto" },
+                            F: { h: "220", s: "auto", l: "auto" },
+                            D: { h: "180", s: "auto", l: "auto" },
+                            Dc: { h: "180", s: "auto", l: "auto" },
+                            DIB: { h: "180", s: "auto", l: "auto" },
+                            Ds: { h: "150", s: "auto", l: "auto" },
+                            Sch: { h: "120", s: "auto", l: "auto" },
+                            Sr: { h: "120", s: "auto", l: "auto" },
+                            MSr: { h: "120", s: "auto", l: "auto" },
+                            Wku: { h: "90", s: "auto", l: "auto" },
+                            Slc: { h: "90", s: "auto", l: "auto" },
+                            SQ: { h: "90", s: "auto", l: "auto" },
+                            TLB: { h: "60", s: "auto", l: "auto" },
+                            Wat: { h: "60", s: "auto", l: "auto" },
+                            Rdy: { h: "30", s: "auto", l: "auto" },
+                            X: { h: "0", s: "auto", l: "auto" },
+                            Xbm: { h: "0", s: "auto", l: "auto" },
+                            Xsf: { h: "330", s: "auto", l: "auto" },
+                            Xs: { h: "350", s: "auto", l: "auto" },
+                            Xl: { h: "10", s: "auto", l: "auto" },
+                            Xv: { h: "0", s: "30", l: "auto" },
+                            Xvm: { h: "0", s: "30", l: "50" },
+                            f: { h: "0", s: "0", l: "auto" },
+                            Wb: { h: "330", s: "auto", l: "auto" },
+                            Cm: { h: "330", s: "auto", l: "auto" },
+                        },
+                        1: {
+                            stl: { h: "0", s: "0", l: "75" },
+                            L1I: { h: "255", s: "23", l: "73" },
+                            L1It: { h: "255", s: "23", l: "73" },
+                            L1If: { h: "255", s: "23", l: "73" },
+                            L1D: { h: "348", s: "42", l: "65" },
+                            L1Dt: { h: "348", s: "42", l: "65" },
+                            L2C: { h: "302", s: "14", l: "64" },
+                            L2Ct: { h: "302", s: "14", l: "64" },
+                            LLC: { h: "303", s: "8", l: "46" },
+                            ITLB: { h: "279", s: "48", l: "50" },
+                            DTLB: { h: "60", s: "48", l: "50" },
+                            STLB: { h: "182", s: "48", l: "50" },
+                        },
+                        enable: 1,
+                        defaultColor: { h: "20", s: "auto", l: "auto" },
+                    },
 
                     RSD: {
                         0: {
@@ -179,8 +226,17 @@
                     if (raw) {
                         let data = JSON.parse(raw);
                         for (let k in data) {
-                            if (!k.match(/^[A-Z_]+$/) && k in this)
+                            if (k.match(/^[A-Z_]+$/)) continue;
+                            if (!(k in this)) continue;
+                            if (k === "customColorSchemes" && data[k] && typeof data[k] === "object") {
+                                // Merge saved schemes into defaults so new built-ins (e.g., ChampSim) remain available
+                                let saved = data[k] || {};
+                                for (let name in saved) {
+                                    this.customColorSchemes[name] = saved[name];
+                                }
+                            } else {
                                 this[k] = data[k];
+                            }
                         }
                     }
                 } catch (e) {
@@ -188,6 +244,12 @@
                 }
                 this.check_("theme", this.VALID_THEME_LIST_);
                 this.check_("depArrowType", this.VALID_DEP_ARROW_TYPES_);
+                // Validate colorScheme remains available after merge
+                try {
+                    const builtins = ["Auto", "Unique", "ThreadID"];
+                    const available = builtins.concat(Object.keys(this.customColorSchemes || {}));
+                    if (available.indexOf(this.colorScheme) === -1) this.colorScheme = "RSD";
+                } catch (e) { /* ignore */ }
             }
             save() {
                 try {

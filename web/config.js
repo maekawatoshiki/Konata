@@ -39,7 +39,7 @@
                 this.parsingYieldInterval = 16384; // Lines processed before yielding control
                 this.streamYieldInterval = 16384; // Lines processed before yielding in streaming
                 // Compaction behavior: 1 = compact at finish, 0 = skip compaction
-                this.compactOnFinish = 1;
+                this.compactOnFinish = 0;
                 this.customColorSchemes = {
                     Custom: {
                         enable: 0,

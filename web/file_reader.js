@@ -45,6 +45,8 @@
                             yieldInterval = isChrome ? 2048 : 4096;
                         }
                         let stream;
+                        // Reset counters
+                        self.bytesRead_ = 0;
                         if (self.file_ instanceof File) {
                             stream = self.file_.stream();
                             self.fileSize_ = self.file_.size || 0;
@@ -64,39 +66,77 @@
                                 self.file_.type === "application/gzip");
                         if (isGz) {
                             if (window.DecompressionStream) {
-                                stream = stream.pipeThrough(
-                                    new DecompressionStream("gzip"),
-                                );
+                                // Count compressed bytes BEFORE decompression
+                                const counting = new TransformStream({
+                                    transform(chunk, controller) {
+                                        if (chunk) self.bytesRead_ += chunk.byteLength;
+                                        controller.enqueue(chunk);
+                                    },
+                                });
+                                stream = stream
+                                    .pipeThrough(counting)
+                                    .pipeThrough(new DecompressionStream("gzip"));
                             } else if (window.pako) {
-                                // Fallback: read whole file then inflate
+                                // Streaming fallback using pako.Inflate
                                 let buf;
                                 if (self.file_ instanceof File) {
-                                    buf = await self.file_.arrayBuffer();
+                                    buf = new Uint8Array(
+                                        await self.file_.arrayBuffer(),
+                                    );
                                 } else {
-                                    buf = await (
-                                        await fetch(self.file_)
-                                    ).arrayBuffer();
+                                    buf = new Uint8Array(
+                                        await (
+                                            await fetch(self.file_)
+                                        ).arrayBuffer(),
+                                    );
                                 }
-                                const text = window.pako.ungzip(
-                                    new Uint8Array(buf),
-                                    { to: "string" },
-                                );
-                                // Chunk lines to callbacks without blocking too much
-                                const lines = text.split(/\r?\n/);
-                                for (let i = 0; i < lines.length; i++) {
-                                    await onLine(lines[i]);
-                                    // Use configurable yield interval
-                                    if (i % yieldInterval === 0)
-                                        await new Promise((r) =>
-                                            setTimeout(r, 0),
-                                        );
+                                self.fileSize_ = buf.byteLength;
+                                const inflator = new window.pako.Inflate({
+                                    to: "string",
+                                });
+                                let carry = "";
+                                let lineCount = 0;
+                                inflator.onData = async (str) => {
+                                    let chunk = carry + str;
+                                    let parts = chunk.split(/\r?\n/);
+                                    carry = parts.pop();
+                                    for (let line of parts) {
+                                        await onLine(line);
+                                        lineCount++;
+                                        if (lineCount % yieldInterval === 0) {
+                                            await new Promise((r) =>
+                                                setTimeout(r, 0),
+                                            );
+                                        }
+                                    }
+                                };
+                                const CHUNK = 256 * 1024; // 256KB compressed chunks
+                                for (let off = 0; off < buf.byteLength; off += CHUNK) {
+                                    const end = Math.min(buf.byteLength, off + CHUNK);
+                                    const last = end >= buf.byteLength;
+                                    self.bytesRead_ += end - off; // count compressed bytes
+                                    inflator.push(buf.subarray(off, end), last);
+                                    // Yield periodically to keep UI responsive
+                                    if ((off / CHUNK) % Math.max(1, yieldInterval / 1024) === 0) {
+                                        await new Promise((r) => setTimeout(r, 0));
+                                    }
                                 }
+                                if (inflator.err) throw inflator.msg || "pako inflate error";
+                                const tail = inflator.result || "";
+                                if (tail) {
+                                    let chunk = carry + tail;
+                                    let parts = chunk.split(/\r?\n/);
+                                    carry = parts.pop();
+                                    for (let line of parts) await onLine(line);
+                                }
+                                if (carry) await onLine(carry);
                                 onFinish();
                                 return;
                             }
                         }
                         // Decode to text and stream lines
-                        // Read bytes and decode manually to count true byte progress
+                        // Read bytes and decode; for non-gzip or DecompressionStream path,
+                        // compressed byte counting is handled by the TransformStream above
                         const reader = stream.getReader();
                         const decoder = new TextDecoder();
                         let carry = "";
@@ -104,7 +144,9 @@
                         while (true) {
                             const { value, done } = await reader.read();
                             if (done) break;
-                            if (value && value.byteLength) self.bytesRead_ += value.byteLength;
+                            // Only count here for non-gzip/no-counting-transform path
+                            if (!isGz && value && value.byteLength)
+                                self.bytesRead_ += value.byteLength;
                             const text = decoder.decode(value, { stream: true });
                             let chunk = carry + text;
                             let parts = chunk.split(/\r?\n/);

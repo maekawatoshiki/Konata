@@ -503,7 +503,7 @@
     <div class="progress_bar_container">
         <div each="{bar, barID in barList}"
              class={"progress_bar_" + ((store.activeTabID == bar.tabID) ? ("active " + bar.barType) : "background")}
-             style={"width:" + Math.floor(bar.progress * 100) + "%"}
+             style={"width:" + (bar.progress * 100) + "%"}
              ref={"progress_bar_" + barID}></div>
     </div>
     <script>
@@ -512,40 +512,39 @@
         self.barList = {};
         self.store = store;
 
-        let addBar = function(tabID, type) {
-            let id = Math.floor(Math.random() * 1e9);
-            self.barList[id] = {
+        // Use stable IDs per (tabID, type) to avoid duplicates
+        self.makeBarID = function(tabID, type) {
+            return tabID + "_" + (type || "default");
+        };
+        let addOrResetBar = function(tabID, type) {
+            let barID = self.makeBarID(tabID, type);
+            self.barList[barID] = {
                 tabID: tabID,
-                barType: type,
-                id: id,
-                progress: 0.0
+                barType: type || "default",
+                id: barID,
+                progress: 0.0,
             };
-            return id;
+            return barID;
         };
 
         dispatcher.on(CHANGE.PROGRESS_BAR_START, function(tabID, type) {
-            addBar(tabID, type);
+            addOrResetBar(tabID, type);
             self.updateBars();
         });
 
         dispatcher.on(CHANGE.PROGRESS_BAR_UPDATE, function(progress, tabID, type) {
-            for (let id in self.barList) {
-                let b = self.barList[id];
-                if (b.tabID == tabID && b.barType == type) {
-                    b.progress = progress;
-                    break;
-                }
+            let barID = self.makeBarID(tabID, type);
+            if (!(barID in self.barList)) {
+                // Bar might have been finished/removed already
+                return;
             }
+            self.barList[barID].progress = progress;
             self.updateBars();
         });
 
         dispatcher.on(CHANGE.PROGRESS_BAR_FINISH, function(tabID, type) {
-            for (let id in self.barList) {
-                let b = self.barList[id];
-                if (b.tabID == tabID && b.barType == type) {
-                    delete self.barList[id];
-                }
-            }
+            let barID = self.makeBarID(tabID, type);
+            if (barID in self.barList) delete self.barList[barID];
             self.updateBars();
         });
 

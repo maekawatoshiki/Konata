@@ -1,0 +1,614 @@
+{
+    "theme": "light",
+    "colorScheme": "RSD",
+    "windowBounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+    },
+    "splitterPosition": 428,
+    "drawDetailedlyThreshold": 0.5,
+    "drawDependencyThreshold": 4,
+    "drawFrameThreshold": 4,
+    "drawTextThreshold": 10,
+    "drawZoomFactor": 10,
+    "depArrowType": "insideLine",
+    "recentLoadedFiles": [
+        "./logs/RSD-CoreMark-Kanata.log.gz",
+        "./logs/CoreMark-Zicond-RSD-like.onikiri2.txt.gz",
+        "./logs/gcc.champsim.txt",
+        "/Users/uint/work/Konata/logs/coremark10.gem5.txt.gz",
+        "/Users/uint/work/Konata/logs/CoreMark-Zicond-RSD-like.onikiri2.txt.gz",
+        "/Users/uint/work/Konata/logs/coremark10.phalanx.txt",
+        "/Users/uint/work/Konata/logs/RSD-CoreMark-Kanata.log.gz",
+        "/Users/uint/work/Konata/logs/perl.champsim.txt",
+        "/Users/uint/work/Konata/logs/mcf1554.champsim.txt",
+        "/Users/uint/work/Konata/logs/mcf.champsim.txt"
+    ],
+    "bookmarks": [
+        {
+            "x": 5849,
+            "y": 15408,
+            "zoom": 1.7500000000000007
+        },
+        {
+            "x": 0,
+            "y": 0,
+            "zoom": 0
+        },
+        {
+            "x": 5849,
+            "y": 15408,
+            "zoom": 1.7500000000000007
+        },
+        {
+            "x": 0,
+            "y": 0,
+            "zoom": 0
+        },
+        {
+            "x": 0,
+            "y": 0,
+            "zoom": 0
+        },
+        {
+            "x": 0,
+            "y": 0,
+            "zoom": 0
+        },
+        {
+            "x": 0,
+            "y": 0,
+            "zoom": 0
+        },
+        {
+            "x": 0,
+            "y": 0,
+            "zoom": 0
+        },
+        {
+            "x": 0,
+            "y": 0,
+            "zoom": 0
+        },
+        {
+            "x": 0,
+            "y": 0,
+            "zoom": 0
+        }
+    ],
+    "commandHistory": [
+        "j 122216",
+        "j 3415886",
+        "j 3415886",
+        "j 3415886",
+        "j 3415886",
+        "j 3415886",
+        "j 399",
+        "j 82112",
+        "j 1738600",
+        "j 1738600",
+        "j 510492",
+        "j 0",
+        "j 1",
+        "f 0x9e6fa8",
+        "f 2632",
+        "f 2663",
+        "f F",
+        "f L1D",
+        "f L2C",
+        "f d618"
+    ],
+    "maxCommandHistoryNum": 20,
+    "customColorSchemes": {
+        "Custom": {
+            "0": {
+                "F": {
+                    "h": "0",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Rn": {
+                    "h": "60",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Dc": {
+                    "h": "120",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Is": {
+                    "h": "180",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Cm": {
+                    "h": "240",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "f": {
+                    "h": "0",
+                    "s": "0",
+                    "l": "auto"
+                }
+            },
+            "1": {
+                "stl": {
+                    "h": "0",
+                    "s": "0",
+                    "l": "auto"
+                }
+            },
+            "enable": 1,
+            "defaultColor": {
+                "h": "100",
+                "s": "auto",
+                "l": "auto"
+            }
+        },
+        "ChampSim": {
+            "0": {
+                "Fp": {
+                    "h": "300",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Fc": {
+                    "h": "300",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Fi": {
+                    "h": "260",
+                    "s": "50",
+                    "l": "auto"
+                },
+                "F": {
+                    "h": "220",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "D": {
+                    "h": "180",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Dc": {
+                    "h": "180",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "DIB": {
+                    "h": "180",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Ds": {
+                    "h": "150",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Sch": {
+                    "h": "120",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Sr": {
+                    "h": "120",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "MSr": {
+                    "h": "120",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Wku": {
+                    "h": "90",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Slc": {
+                    "h": "90",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "SQ": {
+                    "h": "90",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "TLB": {
+                    "h": "60",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Wat": {
+                    "h": "60",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Rdy": {
+                    "h": "30",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "X": {
+                    "h": "0",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Xbm": {
+                    "h": "0",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Xsf": {
+                    "h": "330",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Xs": {
+                    "h": "350",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Xl": {
+                    "h": "10",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Xv": {
+                    "h": "0",
+                    "s": "30",
+                    "l": "auto"
+                },
+                "Xvm": {
+                    "h": "0",
+                    "s": "30",
+                    "l": "50"
+                },
+                "f": {
+                    "h": "0",
+                    "s": "0",
+                    "l": "auto"
+                },
+                "Wb": {
+                    "h": "330",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Cm": {
+                    "h": "330",
+                    "s": "auto",
+                    "l": "auto"
+                }
+            },
+            "1": {
+                "stl": {
+                    "h": "0",
+                    "s": "0",
+                    "l": "75"
+                },
+                "L1I": {
+                    "h": "255",
+                    "s": "23",
+                    "l": "73"
+                },
+                "L1It": {
+                    "h": "255",
+                    "s": "23",
+                    "l": "73"
+                },
+                "L1If": {
+                    "h": "255",
+                    "s": "23",
+                    "l": "73"
+                },
+                "L1D": {
+                    "h": "348",
+                    "s": "42",
+                    "l": "65"
+                },
+                "L1Dt": {
+                    "h": "348",
+                    "s": "42",
+                    "l": "65"
+                },
+                "L2C": {
+                    "h": "302",
+                    "s": "14",
+                    "l": "64"
+                },
+                "L2Ct": {
+                    "h": "302",
+                    "s": "14",
+                    "l": "64"
+                },
+                "LLC": {
+                    "h": "303",
+                    "s": "8",
+                    "l": "46"
+                },
+                "ITLB": {
+                    "h": "279",
+                    "s": "48",
+                    "l": "50"
+                },
+                "DTLB": {
+                    "h": "60",
+                    "s": "48",
+                    "l": "50"
+                },
+                "STLB": {
+                    "h": "182",
+                    "s": "48",
+                    "l": "50"
+                }
+            },
+            "enable": 1,
+            "defaultColor": {
+                "h": "20",
+                "s": "auto",
+                "l": "auto"
+            }
+        },
+        "SimEcs": {
+            "0": {
+                "F": {
+                    "h": "260",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Dc": {
+                    "h": "220",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Rn": {
+                    "h": "180",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Ds": {
+                    "h": "150",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Sch": {
+                    "h": "120",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Slc": {
+                    "h": "90",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Is": {
+                    "h": "60",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "X": {
+                    "h": "0",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Xbm": {
+                    "h": "0",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Xsf": {
+                    "h": "330",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Xs": {
+                    "h": "350",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Xl": {
+                    "h": "10",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Xv": {
+                    "h": "0",
+                    "s": "30",
+                    "l": "auto"
+                },
+                "Xvm": {
+                    "h": "0",
+                    "s": "30",
+                    "l": "50"
+                },
+                "e": {
+                    "h": "0",
+                    "s": "0",
+                    "l": "auto"
+                },
+                "Wb": {
+                    "h": "300",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "f": {
+                    "h": "0",
+                    "s": "0",
+                    "l": "auto"
+                },
+                "Cm": {
+                    "h": "280",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Jo": {
+                    "h": "260",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "wat": {
+                    "h": "90",
+                    "s": "24",
+                    "l": "auto"
+                },
+                "stl": {
+                    "h": "0",
+                    "s": "0",
+                    "l": "75"
+                },
+                "rsc": {
+                    "h": "0",
+                    "s": "24",
+                    "l": "auto"
+                }
+            },
+            "1": {
+                "wat": {
+                    "h": "90",
+                    "s": "24",
+                    "l": "auto"
+                },
+                "stl": {
+                    "h": "0",
+                    "s": "0",
+                    "l": "75"
+                },
+                "rsc": {
+                    "h": "0",
+                    "s": "24",
+                    "l": "auto"
+                },
+                "L1I": {
+                    "h": "255",
+                    "s": "23",
+                    "l": "73"
+                },
+                "L1D": {
+                    "h": "348",
+                    "s": "42",
+                    "l": "65"
+                },
+                "L2C": {
+                    "h": "302",
+                    "s": "14",
+                    "l": "64"
+                }
+            },
+            "enable": 1,
+            "defaultColor": {
+                "h": "20",
+                "s": "auto",
+                "l": "auto"
+            }
+        },
+        "RSD": {
+            "0": {
+                "Np": {
+                    "h": "300",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "F": {
+                    "h": "270",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Pd": {
+                    "h": "240",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Dc": {
+                    "h": "220",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Rn": {
+                    "h": "180",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Ds": {
+                    "h": "150",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Sc": {
+                    "h": "120",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Is": {
+                    "h": "90",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Rr": {
+                    "h": "60",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "X": {
+                    "h": "30",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Mt": {
+                    "h": "0",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Ma": {
+                    "h": "330",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "Rw": {
+                    "h": "300",
+                    "s": "auto",
+                    "l": "auto"
+                },
+                "f": {
+                    "h": "0",
+                    "s": "0",
+                    "l": "auto"
+                },
+                "Cm": {
+                    "h": "280",
+                    "s": "auto",
+                    "l": "auto"
+                }
+            },
+            "1": {
+                "wat": {
+                    "h": "90",
+                    "s": "24",
+                    "l": "auto"
+                },
+                "stl": {
+                    "h": "0",
+                    "s": "0",
+                    "l": "75"
+                },
+                "rsc": {
+                    "h": "0",
+                    "s": "24",
+                    "l": "auto"
+                }
+            },
+            "enable": 1,
+            "defaultColor": {
+                "h": "20",
+                "s": "auto",
+                "l": "auto"
+            }
+        }
+    }
+}

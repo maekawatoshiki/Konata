@@ -43,11 +43,8 @@
             if (e.ctrlKey) {
                 dispatcher.trigger(ACTION.KONATA_ZOOM, e.deltaY > 0 ? 1 : -1, x, y, 0.6);
             } else {
-                if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-                    dispatcher.trigger(ACTION.KONATA_MOVE_WHEEL_HORIZONTAL, e.deltaX > 0 ? 1 : -1);
-                } else {
-                    dispatcher.trigger(ACTION.KONATA_MOVE_WHEEL_VERTICAL, e.deltaY > 0 ? 1 : -1, true);
-                }
+                // Electron parity: use only direction (±1) for vertical wheel
+                dispatcher.trigger(ACTION.KONATA_MOVE_WHEEL_VERTICAL, e.deltaY > 0 ? 1 : -1, true);
             }
             e.preventDefault();
         };
@@ -106,10 +103,20 @@
             self.updateToolTip();
         };
 
+        // Batch draws to one per animation frame
+        self._framePending = false;
+        self.requestDraw = function() {
+            if (self._framePending) return;
+            self._framePending = true;
+            requestAnimationFrame(function() {
+                self._framePending = false;
+                let canvas = self.refs.canvas;
+                store.tabs[self.id].renderer.drawPipeline(canvas);
+                self.updateToolTip();
+            });
+        };
         self.onPaneContentUpdate = function() {
-            let canvas = self.refs.canvas;
-            store.tabs[self.id].renderer.drawPipeline(canvas);
-            self.updateToolTip();
+            self.requestDraw();
         };
 
         self.on('updated', function() {
@@ -148,6 +155,7 @@
             window.addEventListener('mouseup', self.onMouseUp);
             self.valid = true;
             dispatcher.on(CHANGE.PANE_CONTENT_UPDATE, self.onPaneContentUpdate);
+            self.requestDraw();
             let tip = self.refs.tool_tip.style;
             tip.visibility = 'hidden';
         });
@@ -229,6 +237,7 @@
             let fr = self.refs.find_result_tip.style;
             fr.visibility = 'hidden';
             self.refs.find_result_tip_close.onmousedown = self.onCloseFindResult;
+            if (self.requestLabelDraw) self.requestLabelDraw();
         };
 
         self.onWheel = function(e) {
@@ -238,11 +247,8 @@
             if (e.ctrlKey) {
                 dispatcher.trigger(ACTION.KONATA_ZOOM, e.deltaY > 0 ? 1 : -1, x, y, 0.6);
             } else {
-                if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-                    dispatcher.trigger(ACTION.KONATA_MOVE_WHEEL_HORIZONTAL, e.deltaX > 0 ? 1 : -1);
-                } else {
-                    dispatcher.trigger(ACTION.KONATA_MOVE_WHEEL_VERTICAL, e.deltaY > 0 ? 1 : -1, true);
-                }
+                // Electron parity: use only direction (±1) for vertical wheel
+                dispatcher.trigger(ACTION.KONATA_MOVE_WHEEL_VERTICAL, e.deltaY > 0 ? 1 : -1, true);
             }
             e.preventDefault();
         };
@@ -307,10 +313,20 @@
             dispatcher.trigger(ACTION.KONATA_FIND_HIDE_RESULT);
         };
 
+        // Batch label draws per frame
+        self._labelFramePending = false;
+        self.requestLabelDraw = function() {
+            if (self._labelFramePending) return;
+            self._labelFramePending = true;
+            requestAnimationFrame(function() {
+                self._labelFramePending = false;
+                let canvas = self.refs.canvas;
+                store.tabs[self.id].renderer.drawLabel(canvas);
+                self.updateToolTip();
+            });
+        };
         self.onPaneContentUpdate = function() {
-            let canvas = self.refs.canvas;
-            store.tabs[self.id].renderer.drawLabel(canvas);
-            self.updateToolTip();
+            self.requestLabelDraw();
         };
 
         self.on('updated', function() {

@@ -16,17 +16,13 @@
                 this.colorScheme = "RSD";
                 this.windowBounds = { x: 0, y: 0, width: 1024, height: 768 };
                 this.splitterPosition = 450;
-                this.drawDetailedlyThreshold = 1;
-                this.drawDependencyThreshold = 4;
-                this.drawFrameThreshold = 4;
+                this.drawDetailedlyThreshold = 10;
+                this.drawDependencyThreshold = 5;
+                this.drawFrameThreshold = 5;
                 this.drawTextThreshold = 10;
-                this.drawZoomFactor = 1;
-                this.depArrowType = "notShow";
-                this.VALID_DEP_ARROW_TYPES_ = [
-                    "insideLine",
-                    "leftSideCurve",
-                    "notShow",
-                ];
+                this.drawZoomFactor = 10;
+                this.depArrowType = "insideLine";
+                this.VALID_DEP_ARROW_TYPES_ = ["insideLine", "notShow"];
                 this.recentLoadedFiles = [];
                 this.bookmarks = Array.from({ length: 10 }, () => ({
                     x: 0,
@@ -228,7 +224,11 @@
                         for (let k in data) {
                             if (k.match(/^[A-Z_]+$/)) continue;
                             if (!(k in this)) continue;
-                            if (k === "customColorSchemes" && data[k] && typeof data[k] === "object") {
+                            if (
+                                k === "customColorSchemes" &&
+                                data[k] &&
+                                typeof data[k] === "object"
+                            ) {
                                 // Merge saved schemes into defaults so new built-ins (e.g., ChampSim) remain available
                                 let saved = data[k] || {};
                                 for (let name in saved) {
@@ -247,9 +247,14 @@
                 // Validate colorScheme remains available after merge
                 try {
                     const builtins = ["Auto", "Unique", "ThreadID"];
-                    const available = builtins.concat(Object.keys(this.customColorSchemes || {}));
-                    if (available.indexOf(this.colorScheme) === -1) this.colorScheme = "RSD";
-                } catch (e) { /* ignore */ }
+                    const available = builtins.concat(
+                        Object.keys(this.customColorSchemes || {}),
+                    );
+                    if (available.indexOf(this.colorScheme) === -1)
+                        this.colorScheme = "RSD";
+                } catch (e) {
+                    /* ignore */
+                }
             }
             save() {
                 try {

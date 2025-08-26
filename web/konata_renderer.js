@@ -184,16 +184,26 @@ class KonataRenderer {
         let self = this;
         let posY = self.viewPos_.top;
         let y = Math.floor(posY);
-        if (y < 0 || y > self.getVisibleBottom()) return 0;
-        let oldOp = self.getVisibleOp(y, this.opResolution);
+        if (y < 0 || y > self.getVisibleBottom()) {
+            return 0;
+        }
+
+        // 画面に表示されているものの中で最も上にあるものを基準に
+        let oldOp = null;
+        oldOp = self.getVisibleOp(y, this.opResolution);
+
+        // 水平方向の補正を行う
         let newTop = y + diffY;
         let newY = Math.floor(newTop);
         let newOp = self.getVisibleOp(newY, this.opResolution);
-        if (!newOp) return 0;
-        else if (!oldOp || newOp.id == oldOp.id) {
+
+        if (!newOp) {
+            return 0;
+        } else if (!oldOp || newOp.id == oldOp.id) {
             let left = self.viewPos_.left;
             return newOp.fetchedCycle - left;
         } else {
+            // スクロール前と後の，左上の命令の水平方向の差を加算
             return newOp.fetchedCycle - oldOp.fetchedCycle;
         }
     }
@@ -318,7 +328,8 @@ class KonataRenderer {
     }
     drawLabel(canvas) {
         let self = this;
-        let top = Math.floor(self.viewPos_.top);
+        // Use fractional top for smooth label scrolling
+        let top = self.viewPos_.top;
         self.drawLabelTile_(canvas, top);
     }
     drawLabelTile_(tile, logTop) {
@@ -338,19 +349,23 @@ class KonataRenderer {
         ctx.font = self.labelFont_;
         ctx.fillStyle = self.style_.labelPane.fontColor;
         let lineH = self.opH_;
-        let maxY = Math.ceil(height / lineH);
+        // Compute integer base and fractional offset
+        let baseTop = Math.floor(logTop);
+        let frac = logTop - baseTop;
+        let maxY = Math.ceil(height / lineH) + 1;
         for (let i = 0; i < maxY; i++) {
-            let op = self.getVisibleOp(logTop + i, this.opResolution);
+            let op = self.getVisibleOp(baseTop + i, this.opResolution);
             if (!op) continue;
             let text = op.labelName;
-            let py = (i + 1) * lineH - lineH / 4;
+            let py = (i - frac + 1) * lineH - lineH / 4;
             ctx.fillText(text, Number(self.style_.labelPane.marginLeft), py);
         }
     }
     drawPipeline(canvas) {
         let self = this;
-        let top = Math.floor(self.viewPos_.top);
-        let left = Math.floor(self.viewPos_.left);
+        // Use fractional view position to allow smooth scrolling
+        let top = self.viewPos_.top;
+        let left = self.viewPos_.left;
         self.drawPipelineTile_(canvas, top, left);
     }
     updateScaleParameter() {
@@ -425,8 +440,12 @@ class KonataRenderer {
 
         // 上側にはみ出ていた場合，暗く描画
         let offsetY = 0;
+        // Use dynamic pixel-adjust only when aligned to integer logical coords to avoid shimmering
+        const fracTop = top - Math.floor(top);
+        const fracLeft = left - Math.floor(left);
+        const pxAdj = fracTop === 0 && fracLeft === 0 ? self.PIXEL_ADJUST : 0;
         if (top < 0) {
-            let bottom = -top * self.opH_ + self.PIXEL_ADJUST;
+            let bottom = -top * self.opH_ + pxAdj;
             bottom = Math.min(tile.clientHeight, bottom);
             ctx.fillStyle =
                 self.style_.pipelinePane.invalidBackgroundColor ||
@@ -446,11 +465,11 @@ class KonataRenderer {
             y < top + height;
             y += this.opH_ < 0.25 ? self.drawingInterval_ : 1
         ) {
-            // 背景をストライプに
+            // 背景をストライプに（論理位置が整数境界に揃っている時のみ描画してチラつきを抑制）
             let pixelY = y - top + offsetY;
-            if (self.canDrawFrame) {
+            if (self.canDrawFrame && fracTop === 0) {
                 if (y % 2 == 0) {
-                    let fillTop = pixelY * this.opH_ + self.PIXEL_ADJUST;
+                    let fillTop = pixelY * this.opH_ + pxAdj;
                     ctx.fillStyle =
                         this.style_.pipelinePane.backgroundColorStripeOverlay ||
                         "rgba(245,245,245,0.5)";
@@ -489,47 +508,8 @@ class KonataRenderer {
         }
 
         // 依存関係
-        if (self.depArrowType_ != "notShow" && self.canDrawDependency) {
-            // Use the drawDependency method from backup if it exists, or keep simplified version
-            ctx.strokeStyle = self.style_.pipelinePane.arrowColor;
-            ctx.lineWidth = Number(self.style_.pipelinePane.arrowWeight);
-            const visibleBottom = top + Math.ceil(height);
-            for (let y = Math.floor(top); y < top + height; y++) {
-                let op = self.getVisibleOp(y, this.opResolution);
-                if (!op) continue;
-
-                for (let d of op.prods || []) {
-                    let prod = self.getOpFromID(d.opID, this.opResolution);
-                    if (!prod) continue;
-                    let cy = (y - top + offsetY) * self.opH_ + self.opH_ / 2;
-                    let py2 =
-                        (prod.id - top + offsetY) * self.opH_ + self.opH_ / 2;
-                    if (prod.id < top || prod.id > visibleBottom) continue;
-                    let x1 = (Math.max(left, d.cycle) - left) * self.opW_;
-                    let x0 =
-                        (Math.max(
-                            left,
-                            prod.prodCycle >= 0
-                                ? prod.prodCycle
-                                : prod.fetchedCycle,
-                        ) -
-                            left) *
-                        self.opW_;
-
-                    if (self.depArrowType_ === "insideLine") {
-                        ctx.beginPath();
-                        ctx.moveTo(x0, py2);
-                        ctx.lineTo(x1, cy);
-                        ctx.stroke();
-                    } else if (self.depArrowType_ === "leftSideCurve") {
-                        let ctrlX = Math.min(x0, x1) - self.opW_ * 2;
-                        ctx.beginPath();
-                        ctx.moveTo(x0, py2);
-                        ctx.quadraticCurveTo(ctrlX, (py2 + cy) / 2, x1, cy);
-                        ctx.stroke();
-                    }
-                }
-            }
+        if (self.depArrowType_ != "notShow") {
+            self.drawDependency(offsetY, top, left, width, height, ctx);
         }
 
         // 下側にはみ出ていた場合，暗く描画
@@ -538,15 +518,153 @@ class KonataRenderer {
         let bottomOuterHeight = top - offsetY + height - 1 - getVisibleBottom();
         if (bottomOuterHeight > 0) {
             let begin =
-                tile.clientHeight -
-                bottomOuterHeight * self.opH_ +
-                self.PIXEL_ADJUST;
+                tile.clientHeight - bottomOuterHeight * self.opH_ + pxAdj;
             begin = Math.max(0, begin);
             ctx.fillStyle =
                 self.style_.pipelinePane.invalidBackgroundColor ||
                 "rgba(0,0,0,0.1)";
             ctx.fillRect(0, begin, tile.clientWidth, tile.clientHeight);
         }
+    }
+    drawDependency(logOffsetY, logTop, logLeft, logWidth, logHeight, ctx) {
+        // 依存関係の描画
+        let self = this;
+        if (!self.canDrawDependency) return;
+
+        // Arrow geometry settings
+        let arrowBeginOffsetX = (self.opW_ * 3) / 4 + self.PIXEL_ADJUST;
+        let arrowEndOffsetX = (self.opW_ * 1) / 4 + self.PIXEL_ADJUST;
+        let arrowMidOffsetY = self.laneH_ / 2 + self.PIXEL_ADJUST;
+        let arrowBeginOffsetY = (self.laneH_ * 2) / 3 + self.PIXEL_ADJUST;
+        let arrowEndOffsetY = (self.laneH_ * 1) / 3 + self.PIXEL_ADJUST;
+
+        let arrowWeight = Number(this.style_.pipelinePane.arrowWeight);
+        ctx.lineWidth = arrowWeight;
+        ctx.strokeStyle = this.style_.pipelinePane.arrowColor;
+        ctx.fillStyle = this.style_.pipelinePane.arrowColor;
+
+        const viewStartCycle = Math.floor(logLeft);
+        const viewEndCycle = Math.ceil(logLeft + logWidth);
+        for (let y = Math.floor(logTop); y < logTop + logHeight; y++) {
+            let op = self.getVisibleOp(y);
+            if (!op) continue;
+
+            let consCycle = op.consCycle;
+            if (consCycle === -1) continue;
+
+            for (let dep of op.prods) {
+                let prod = this.getOpFromID(dep.opID); // producer op (not visible-op API)
+                if (!prod) continue;
+                if (this.hideFlushedOps_ && prod.flush) continue; // skip flushed when hidden
+
+                let prodCycle = prod.prodCycle;
+                if (prodCycle === -1) continue;
+
+                // Cull arrows completely outside the horizontal viewport
+                if (prodCycle < viewStartCycle && consCycle < viewStartCycle)
+                    continue;
+                if (prodCycle > viewEndCycle && consCycle > viewEndCycle)
+                    continue;
+
+                // y-position depending on hideFlushedOps
+                let yProd = this.hideFlushedOps_ ? prod.rid : prod.id;
+
+                if (self.depArrowType_ === DEP_ARROW_TYPE.INSIDE_LINE) {
+                    let xBegin =
+                        (prodCycle - logLeft) * self.opW_ + arrowBeginOffsetX;
+                    let yBegin =
+                        (yProd - logTop + logOffsetY) * self.opH_ +
+                        arrowMidOffsetY;
+                    // End at the consumer's consume cycle, not the dep event cycle
+                    let xEnd =
+                        (consCycle - logLeft) * self.opW_ + arrowEndOffsetX;
+                    let yEnd =
+                        (y - logTop + logOffsetY) * self.opH_ + arrowMidOffsetY;
+
+                    self.drawArrow_(
+                        ctx,
+                        [xBegin, yBegin],
+                        [xEnd, yEnd],
+                        [xEnd - xBegin, yEnd - yBegin],
+                        arrowWeight,
+                    );
+                } else {
+                    // LEFT_SIDE_CURVE
+                    let xBegin = (prod.fetchedCycle - logLeft) * self.opW_;
+                    let yBegin =
+                        (yProd - logTop + logOffsetY) * self.opH_ +
+                        arrowBeginOffsetY;
+                    let xEnd = (op.fetchedCycle - logLeft) * self.opW_;
+                    let yEnd =
+                        (y - logTop + logOffsetY) * self.opH_ + arrowEndOffsetY;
+
+                    self.drawArrow_(
+                        ctx,
+                        [xBegin, yBegin],
+                        [xEnd, yEnd],
+                        [1, 0],
+                        arrowWeight,
+                    );
+                }
+            }
+        }
+    }
+
+    // 矢印を描画する
+    // start/end: [x,y], v: direction vector for head orientation, size: scale
+    drawArrow_(ctx, start, end, v, size) {
+        let self = this;
+        if (self.depArrowType_ == DEP_ARROW_TYPE.INSIDE_LINE) {
+            // Straight line inside pipeline
+            ctx.beginPath();
+            ctx.moveTo(start[0], start[1]);
+            ctx.lineTo(end[0], end[1]);
+            ctx.stroke();
+        } else {
+            // Left-side bezier curve
+            let offsetX =
+                start[0] -
+                self.opW_ *
+                    Math.sqrt(
+                        Math.max(
+                            0,
+                            (end[1] - start[1]) / Math.max(1e-6, self.opH_),
+                        ),
+                    );
+            ctx.beginPath();
+            ctx.moveTo(start[0], start[1]);
+            ctx.bezierCurveTo(
+                offsetX,
+                start[1],
+                offsetX,
+                end[1],
+                end[0],
+                end[1],
+            );
+            ctx.stroke();
+        }
+
+        // Arrow head
+        let shape = 0.8;
+        let norm = Math.sqrt(v[0] * v[0] + v[1] * v[1]) || 1;
+        let f = (size * 5) / norm; // 5: head size
+        let vx = v[0] * f;
+        let vy = v[1] * f;
+
+        let p0 = end;
+        let p1 = [
+            end[0] - vx - vy * 0.5 * shape,
+            end[1] - vy + vx * 0.5 * shape,
+        ];
+        let p2 = [
+            end[0] - vx + vy * 0.5 * shape,
+            end[1] - vy - vx * 0.5 * shape,
+        ];
+        ctx.beginPath();
+        ctx.moveTo(p0[0], p0[1]);
+        ctx.lineTo(p1[0], p1[1]);
+        ctx.lineTo(p2[0], p2[1]);
+        ctx.fill();
     }
     get canDrawDetailedly() {
         let laneHeight = this.laneH_ - this.lane_height_margin_ * 2;

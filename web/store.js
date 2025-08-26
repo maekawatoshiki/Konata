@@ -463,39 +463,61 @@
                 };
                 this.startScroll = function (diff) {
                     if (!self.activeTab) return;
-                    if (self.scroll.inAnimation) {
-                        self.finishScroll();
-                    }
+                    if (self.scroll.inAnimation) self.finishScroll();
+                    const r = self.activeTab.renderer;
+                    const cur = r.viewPos;
+                    // Do not snap X on vertical scroll; preserve horizontal position
+                    const targetTop = cur[1] + diff[1];
+                    const targetLeft = cur[0] + diff[0];
+                    r.moveLogicalPos([targetLeft, targetTop]);
+                    self.trigger(CHANGE.PANE_CONTENT_UPDATE);
+                };
+
+                self.on(ACTION.KONATA_MOVE_WHEEL_HORIZONTAL, function (amount) {
+                    if (!self.activeTab) return;
+                    let r = self.activeTab.renderer;
+                    // Electron parity: use direction-only step of 6/scale
+                    const dir = amount > 0 ? 1 : -1;
+                    const dx = (dir * 6) / r.zoomScale;
+                    self.startSmoothScroll([dx, 0]);
+                });
+                self.on(
+                    ACTION.KONATA_MOVE_WHEEL_VERTICAL,
+                    function (amount, adjust) {
+                        if (!self.activeTab) return;
+                        let r = self.activeTab.renderer;
+                        // Electron parity: use direction-only step of 3/scale
+                        const dir = amount > 0 ? 1 : -1;
+                        const dy = (dir * 3) / r.zoomScale;
+                        const dx = adjust ? r.adjustScrollDiffX(dy) : 0;
+                        self.startSmoothScroll([dx, dy]);
+                    },
+                );
+                // Smooth scroll starter using RAF
+                this.startSmoothScroll = function (diff) {
+                    if (!self.activeTab) return;
+                    if (self.scroll.inAnimation) self.finishScroll();
                     const r = self.activeTab.renderer;
                     const cur = r.viewPos;
                     let targetTop = cur[1] + diff[1];
                     let targetLeft = cur[0] + diff[0];
-                    // Align left edge to the first stage (fetchedCycle) of the top-most visible op
                     if (Math.abs(diff[1]) > 0) {
                         const y = Math.floor(targetTop);
                         const op = r.getVisibleOp(y, r.opResolution);
                         if (op) targetLeft = op.fetchedCycle;
                     }
-                    r.moveLogicalPos([targetLeft, targetTop]);
-                    self.trigger(CHANGE.PANE_CONTENT_UPDATE);
+                    self.scroll.curPos = [cur[0], cur[1]];
+                    self.scroll.endPos = [targetLeft, targetTop];
+                    self.scroll.diff = [
+                        targetLeft - cur[0],
+                        targetTop - cur[1],
+                    ];
+                    self.scroll.speed = 1.0;
+                    self.scroll.inAnimation = true;
+                    self.scroll.rafId = requestAnimationFrame(
+                        self.animateScroll,
+                    );
                 };
-
-                self.on(ACTION.KONATA_MOVE_WHEEL_HORIZONTAL, function (sign) {
-                    if (!self.activeTab) return;
-                    let r = self.activeTab.renderer;
-                    let dx = (sign * 3) / r.zoomScale;
-                    self.startScroll([dx, 0]);
-                });
-                self.on(
-                    ACTION.KONATA_MOVE_WHEEL_VERTICAL,
-                    function (sign, adjust) {
-                        if (!self.activeTab) return;
-                        let r = self.activeTab.renderer;
-                        let dy = (sign * 3) / r.zoomScale;
-                        let dx = adjust ? r.adjustScrollDiffX(dy) : 0;
-                        self.startScroll([dx, dy]);
-                    },
-                );
                 // Smooth zoom helpers
                 this.zoomAbs = function (zoomLevel, posX, posY, compensatePos) {
                     if (!self.activeTab) return;

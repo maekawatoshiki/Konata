@@ -268,7 +268,8 @@ class OpPageStore {
             let p = this.opPages_[i];
             if (!p) continue;
             // Yield periodically to keep UI responsive
-            if (processed % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
+            if (processed % yieldEvery === 0)
+                await new Promise((r) => setTimeout(r, 0));
             p.compress();
             if (!p.isCompressing_) p.purgeDecompressedData();
             processed++;
@@ -349,7 +350,9 @@ class BigKeyValueStore {
     }
     setCompressionEnabled(enabled) {
         this.compressionEnabled_ = !!enabled;
-        this.page_.forEach((p) => p.setCompressionEnabled(this.compressionEnabled_));
+        this.page_.forEach((p) =>
+            p.setCompressionEnabled(this.compressionEnabled_),
+        );
     }
     compressAll() {
         this.page_.forEach((p) => p.compressAll());
@@ -357,7 +360,8 @@ class BigKeyValueStore {
     async compressAllAsync(onProgress) {
         // Count total pages first
         let total = 0;
-        for (let ps of this.page_) total += (ps.opPages_ && ps.opPages_.length) || 0;
+        for (let ps of this.page_)
+            total += (ps.opPages_ && ps.opPages_.length) || 0;
         let done = 0;
         for (let ps of this.page_) {
             done += await ps.compressAllAsync(() => {

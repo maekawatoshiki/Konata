@@ -53,10 +53,12 @@
                         } else {
                             const res = await fetch(self.file_);
                             // Try to use Content-Length when available
-                            const len = res.headers && res.headers.get
-                                ? Number(res.headers.get("Content-Length"))
-                                : 0;
-                            if (!Number.isNaN(len) && len > 0) self.fileSize_ = len;
+                            const len =
+                                res.headers && res.headers.get
+                                    ? Number(res.headers.get("Content-Length"))
+                                    : 0;
+                            if (!Number.isNaN(len) && len > 0)
+                                self.fileSize_ = len;
                             stream = res.body;
                         }
                         // gzip support
@@ -69,13 +71,16 @@
                                 // Count compressed bytes BEFORE decompression
                                 const counting = new TransformStream({
                                     transform(chunk, controller) {
-                                        if (chunk) self.bytesRead_ += chunk.byteLength;
+                                        if (chunk)
+                                            self.bytesRead_ += chunk.byteLength;
                                         controller.enqueue(chunk);
                                     },
                                 });
                                 stream = stream
                                     .pipeThrough(counting)
-                                    .pipeThrough(new DecompressionStream("gzip"));
+                                    .pipeThrough(
+                                        new DecompressionStream("gzip"),
+                                    );
                             } else if (window.pako) {
                                 // Streaming fallback using pako.Inflate
                                 let buf;
@@ -111,17 +116,34 @@
                                     }
                                 };
                                 const CHUNK = 256 * 1024; // 256KB compressed chunks
-                                for (let off = 0; off < buf.byteLength; off += CHUNK) {
-                                    const end = Math.min(buf.byteLength, off + CHUNK);
+                                for (
+                                    let off = 0;
+                                    off < buf.byteLength;
+                                    off += CHUNK
+                                ) {
+                                    const end = Math.min(
+                                        buf.byteLength,
+                                        off + CHUNK,
+                                    );
                                     const last = end >= buf.byteLength;
                                     self.bytesRead_ += end - off; // count compressed bytes
                                     inflator.push(buf.subarray(off, end), last);
                                     // Yield periodically to keep UI responsive
-                                    if ((off / CHUNK) % Math.max(1, yieldInterval / 1024) === 0) {
-                                        await new Promise((r) => setTimeout(r, 0));
+                                    if (
+                                        (off / CHUNK) %
+                                            Math.max(
+                                                1,
+                                                yieldInterval / 1024,
+                                            ) ===
+                                        0
+                                    ) {
+                                        await new Promise((r) =>
+                                            setTimeout(r, 0),
+                                        );
                                     }
                                 }
-                                if (inflator.err) throw inflator.msg || "pako inflate error";
+                                if (inflator.err)
+                                    throw inflator.msg || "pako inflate error";
                                 const tail = inflator.result || "";
                                 if (tail) {
                                     let chunk = carry + tail;
@@ -147,7 +169,9 @@
                             // Only count here for non-gzip/no-counting-transform path
                             if (!isGz && value && value.byteLength)
                                 self.bytesRead_ += value.byteLength;
-                            const text = decoder.decode(value, { stream: true });
+                            const text = decoder.decode(value, {
+                                stream: true,
+                            });
                             let chunk = carry + text;
                             let parts = chunk.split(/\r?\n/);
                             carry = parts.pop();
@@ -155,7 +179,9 @@
                                 await onLine(line);
                                 lineCount++;
                                 if (lineCount % yieldInterval === 0) {
-                                    await new Promise((resolve) => setTimeout(resolve, 0));
+                                    await new Promise((resolve) =>
+                                        setTimeout(resolve, 0),
+                                    );
                                 }
                             }
                         }

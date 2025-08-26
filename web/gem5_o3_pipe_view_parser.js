@@ -280,13 +280,21 @@ class Gem5O3PipeViewParser {
         }
         this.opListBody_.setParsedLastID(this.lastNotFlushedID);
         // Finalization phase: compress pages incrementally with progress
-        const shouldCompact = !this.config_ || this.config_.compactOnFinish !== 0;
-        if (shouldCompact && this.opListBody_ && this.opListBody_.setCompressionEnabled) {
+        const shouldCompact =
+            !this.config_ || this.config_.compactOnFinish !== 0;
+        if (
+            shouldCompact &&
+            this.opListBody_ &&
+            this.opListBody_.setCompressionEnabled
+        ) {
             this.opListBody_.setCompressionEnabled(true);
             if (this.opListBody_.compressAllAsync) {
                 await this.opListBody_.compressAllAsync((done, total) => {
                     let percent = 0.98 + 0.02 * (total > 0 ? done / total : 1);
-                    this.updateCallback_(Math.min(percent, 0.999), this.updateCount_);
+                    this.updateCallback_(
+                        Math.min(percent, 0.999),
+                        this.updateCount_,
+                    );
                 });
             } else if (this.opListBody_.compressAll) {
                 this.opListBody_.compressAll();

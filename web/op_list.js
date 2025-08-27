@@ -12,13 +12,16 @@ class BigKeyValueStoreConfigLarge {
 }
 class BigKeyValueStoreConfigDefault {
     constructor() {
-        // Relax defaults to reduce compression thrashing during parsing
         // Larger pages -> fewer page switches, higher memory locality
         this.PAGE_SIZE_BITS_MAP = [10, 10, 10, 10, 10]; // 1024 entries per level
         this.PAGE_LEVEL_MAP = [1, 8, 64, 512, 4096];
-        // Allow many more pages to remain decompressed while loading
-        this.MAX_DECOMPRESSED_PAGES = 128;
-        this.CACHE_SIZE = 1024 * 32;
+        // Constrain decompressed pages more aggressively on Chrome to avoid OOM
+        const isChrome =
+            typeof navigator !== "undefined" &&
+            /Chrome/.test(navigator.userAgent || "") &&
+            /Google Inc/.test(navigator.vendor || "");
+        this.MAX_DECOMPRESSED_PAGES = isChrome ? 48 : 128;
+        this.CACHE_SIZE = isChrome ? 1024 * 16 : 1024 * 32;
     }
 }
 class BigKeyValueStoreConfigTest {

@@ -132,9 +132,17 @@ class Gem5O3PipeViewParser {
     startParsing() {
         this.complete_ = false;
         this.curCycle_ = 0;
-        // Disable page compression during parsing for speed
-        if (this.opListBody_ && this.opListBody_.setCompressionEnabled)
-            this.opListBody_.setCompressionEnabled(false);
+        // Keep compression enabled for large files or Chrome to cap memory use.
+        // Heuristic: disable compression only for small files in non-Chrome.
+        const isChrome =
+            /Chrome/.test(navigator.userAgent || "") &&
+            /Google Inc/.test(navigator.vendor || "");
+        const size = (this.file_ && this.file_.fileSize) || 0;
+        const smallFile = size > 0 && size <= 25 * 1024 * 1024; // <= 25MB
+        const enableCompressionDuringParse = isChrome || !smallFile;
+        if (this.opListBody_ && this.opListBody_.setCompressionEnabled) {
+            this.opListBody_.setCompressionEnabled(enableCompressionDuringParse);
+        }
     }
     async parseLine(line) {
         try {

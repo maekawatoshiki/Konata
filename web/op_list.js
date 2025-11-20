@@ -453,6 +453,13 @@ class OpList {
         }
         return this.getParsedOp(id, resolution);
     }
+    /** @param {number} rid @param {Op} op */
+    setParsedRetiredOp(rid, op) {
+        this.parsedRIDTable_[rid] = op.id;
+        if (this.parsedLastRID_ < op.rid) {
+            this.parsedLastRID_ = op.rid;
+        }
+    }
     purge() {
         this.store_.close();
     }

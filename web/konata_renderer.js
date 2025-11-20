@@ -66,6 +66,12 @@ class KonataRenderer {
         this.changeColorScheme(config.colorScheme);
         this.updateScaleParameter();
     }
+    get hideFlushedOps() {
+        return this.hideFlushedOps_;
+    }
+    set hideFlushedOps(v) {
+        this.hideFlushedOps_ = !!v;
+    }
     loadStyle() {
         let fileName = this.config.THEME_STYLE_LIST[this.config.theme];
         this.style_ = require(fileName);
@@ -490,6 +496,9 @@ class KonataRenderer {
             if (op == null) {
                 // Since id can not be contiguous in gem5, there can be valid ops
                 // after null.
+                continue;
+            }
+            if (this.hideFlushedOps_ && op.flush) {
                 continue;
             }
 

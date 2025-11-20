@@ -109,7 +109,9 @@ class OnikiriParser {
         const smallFile = size > 0 && size <= 25 * 1024 * 1024; // <= 25MB
         const enableCompressionDuringParse = isChrome || !smallFile;
         if (this.opListBody_ && this.opListBody_.setCompressionEnabled) {
-            this.opListBody_.setCompressionEnabled(enableCompressionDuringParse);
+            this.opListBody_.setCompressionEnabled(
+                enableCompressionDuringParse,
+            );
         }
     }
     async parseLine(line) {

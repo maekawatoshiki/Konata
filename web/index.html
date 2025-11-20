@@ -19,17 +19,43 @@
         >
 
         <style>
-            /* Hide Electron tab bar for web single-view */
-            app_tabbar { display: none !important; }
-            /* Simple toolbar */
-            .web-toolbar { padding: 0.5rem; background: #f8f9fa; border-bottom: 1px solid #ddd; }
-            .web-toolbar .spacer { flex: 1 1 auto; }
-            /* Fill viewport */
-            html, body { height: 100%; }
-            body { margin: 0; display: flex; flex-direction: column; }
-            .app-root { position: relative; flex: 1 1 auto; min-height: 0; }
-            /* Ensure canvas container fills */
-            app { display: block; position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+        /* Hide Electron tab bar for web single-view */
+        app_tabbar {
+            display: none !important;
+        }
+        /* Simple toolbar */
+        .web-toolbar {
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border-bottom: 1px solid #ddd;
+        }
+        .web-toolbar .spacer {
+            flex: 1 1 auto;
+        }
+        /* Fill viewport */
+        html,
+        body {
+            height: 100%;
+        }
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .app-root {
+            position: relative;
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+        /* Ensure canvas container fills */
+        app {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
         </style>
     </head>
     <body>
@@ -53,8 +79,24 @@
             </div>
             <div class="spacer"></div>
             <div class="form-inline">
+                <div class="custom-control custom-checkbox mr-3">
+                    <input
+                        type="checkbox"
+                        class="custom-control-input"
+                        id="hideFlushedToggle"
+                    >
+                    <label
+                        class="custom-control-label mb-0"
+                        for="hideFlushedToggle"
+                    >
+                        Hide flushed ops
+                    </label>
+                </div>
                 <label class="mr-2 mb-0">Theme</label>
-                <select id="themeSelect" class="custom-select custom-select-sm mr-3">
+                <select
+                    id="themeSelect"
+                    class="custom-select custom-select-sm mr-3"
+                >
                     <option value="light" selected>Light</option>
                     <option value="dark">Dark</option>
                 </select>
@@ -71,7 +113,9 @@
             <app></app>
         </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/riot@3/riot+compiler.min.js"></script>
+        <script
+            src="https://cdn.jsdelivr.net/npm/riot@3/riot+compiler.min.js"
+        ></script>
 
         <script src="./loader.js"></script>
         <script src="./themes.js"></script>
@@ -93,51 +137,91 @@
         ></script>
         <script type="riot/tag" src="./app.tag.html" charset="UTF-8"></script>
 
-        <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+        <script
+            src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"
+        ></script>
+        <script
+            src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"
+        ></script>
+        <script
+            src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"
+        ></script>
 
         <script>
-            var StoreMod = CJS.require('store.js');
-            var store = new StoreMod.Store();
+        var StoreMod = CJS.require("store.js");
+        var store = new StoreMod.Store();
 
-            var dispatcher = store;
-            var ACTION = StoreMod.ACTION;
-            var CHANGE = StoreMod.CHANGE;
+        var dispatcher = store;
+        var ACTION = StoreMod.ACTION;
+        var CHANGE = StoreMod.CHANGE;
 
-            window.store = store;
-            window.dispatcher = dispatcher;
-            window.ACTION = ACTION;
-            window.CHANGE = CHANGE;
+        window.store = store;
+        window.dispatcher = dispatcher;
+        window.ACTION = ACTION;
+        window.CHANGE = CHANGE;
 
-            // Initialize dependency arrow selector from config
-            var depSelect = document.getElementById('depSelect');
-            depSelect.value = store.config.depArrowType;
-            depSelect.addEventListener('change', function(e) {
-                dispatcher.trigger(ACTION.KONATA_SET_DEP_ARROW_TYPE, e.target.value);
-            });
+        // Initialize dependency arrow selector from config
+        var depSelect = document.getElementById("depSelect");
+        depSelect.value = store.config.depArrowType;
+        depSelect.addEventListener("change", function (e) {
+            dispatcher.trigger(
+                ACTION.KONATA_SET_DEP_ARROW_TYPE,
+                e.target.value,
+            );
+        });
 
-            document.getElementById('fileInput').addEventListener('change', function(e) {
+        document
+            .getElementById("fileInput")
+            .addEventListener("change", function (e) {
                 var f = e.target.files && e.target.files[0];
                 if (f) dispatcher.trigger(ACTION.FILE_OPEN, f);
             });
-            document.getElementById('btnStats').addEventListener('click', function(){
+        document
+            .getElementById("btnStats")
+            .addEventListener("click", function () {
                 dispatcher.trigger(ACTION.FILE_SHOW_STATS);
             });
-            document.getElementById('btnSettings').addEventListener('click', function(){
+        document
+            .getElementById("btnSettings")
+            .addEventListener("click", function () {
                 dispatcher.trigger(ACTION.FILE_SHOW_SETTINGS);
             });
-            document.getElementById('btnFind').addEventListener('click', function(){
-                dispatcher.trigger(ACTION.COMMAND_PALETTE_OPEN, 'f ');
+        document
+            .getElementById("btnFind")
+            .addEventListener("click", function () {
+                dispatcher.trigger(ACTION.COMMAND_PALETTE_OPEN, "f ");
             });
-            var themeSelect = document.getElementById('themeSelect');
-            // Sync selector with persisted config
-            themeSelect.value = store.config.theme;
-            document.getElementById('themeSelect').addEventListener('change', function(e){
-                dispatcher.trigger(ACTION.KONATA_CHANGE_UI_COLOR_THEME, e.target.value);
+        var themeSelect = document.getElementById("themeSelect");
+        // Sync selector with persisted config
+        themeSelect.value = store.config.theme;
+        document
+            .getElementById("themeSelect")
+            .addEventListener("change", function (e) {
+                dispatcher.trigger(
+                    ACTION.KONATA_CHANGE_UI_COLOR_THEME,
+                    e.target.value,
+                );
             });
+        // Hide flushed ops toggle
+        var hideFlushed = document.getElementById("hideFlushedToggle");
+        hideFlushed.addEventListener("change", function (e) {
+            dispatcher.trigger(
+                ACTION.KONATA_HIDE_FLUSHED_OPS,
+                0,
+                e.target.checked,
+            );
+        });
+        // keep toggle state in sync when renderer updates menu state
+        store.on(CHANGE.MENU_UPDATE, function () {
+            hideFlushed.checked = store.activeTab
+                ? !!store.activeTab.hideFlushedOps
+                : false;
+        });
+        hideFlushed.checked = store.activeTab
+            ? !!store.activeTab.hideFlushedOps
+            : false;
 
-            riot.mount('app');
+        riot.mount("app");
         </script>
     </body>
 </html>
